@@ -1,0 +1,16 @@
+22.225mm
+
+visible screen
+58.7375mm x 46.0375mm
+
+entire screen
+69.85mm x 50.8mm
+
+screen shield size
+77.7875mm x 52.3875mm
+
+pic frame
+90.4875mm x 65.0875mm
+
+inset height with glass
+7.9375mm

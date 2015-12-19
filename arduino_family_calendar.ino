@@ -8,6 +8,7 @@
 #include "State.h"
 #include "StateError.h"
 #include "StateSetClock.h"
+#include "StateMain.h"
 
 // Touch Settings
 #define YP A2
@@ -38,6 +39,12 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define YELLOW          0xFFE0 
 #define WHITE           0xFFFF
 
+// Default time
+#define TIME_DEFAULT_HOUR 23
+#define TIME_DEFAULT_MINUTE 59
+#define TIME_DEFAULT_MONTH 1
+#define TIME_DEFAULT_DAY 1
+#define TIME_DEFAULT_YEAR 2016
 
 void setup(void) {
 
@@ -50,7 +57,14 @@ void setup(void) {
     pinMode(13, OUTPUT);
 
     // time in 12 hour format
-    hourFormat12();
+    setTime(
+        TIME_DEFAULT_HOUR,
+        TIME_DEFAULT_MINUTE,
+        0,
+        TIME_DEFAULT_DAY,
+        TIME_DEFAULT_MONTH,
+        TIME_DEFAULT_YEAR
+    );    
 
     // boot sd
     if (!SD.begin()) {
@@ -68,9 +82,8 @@ void setup(void) {
 
     // enter state 'SetClock'
     State::changeState(
-        new StateSetClock(
-            &tft,
-            &ts
+        new StateMain(
+            &tft
         )
     );
 

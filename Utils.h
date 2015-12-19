@@ -18,8 +18,8 @@
 class Utils
 {
 public:
-	static const uint8_t FONT_SIZE_W = 6;
-	static const uint8_t FONT_SIZE_H = 8;
+	static const uint8_t PROGMEM FONT_SIZE_W = 6;
+	static const uint8_t PROGMEM FONT_SIZE_H = 8;
 	static void drawString(Adafruit_TFTLCD* tft, uint16_t x, uint16_t y, char* string, uint16_t fg, uint16_t bg, uint8_t size);
     
     static bool isTouched(TouchScreen* ts, Adafruit_TFTLCD* tft, uint16_t x, uint16_t y, uint16_t w, uint16_t h);

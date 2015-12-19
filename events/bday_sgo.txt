@@ -1,0 +1,5 @@
+title=Sam Ogden
+type=bday
+month=12
+day=28
+year=1993

@@ -1,0 +1,6 @@
+title=Nathan Ogden
+type=bday
+month=1
+day=22
+year=1987
+rule=0

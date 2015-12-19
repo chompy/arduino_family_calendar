@@ -51,7 +51,7 @@ void StateSetClock::enter()
 
 void StateSetClock::loop()
 {
-    Utils::isTouched(ts, tft, 16, 16, 32, 32);
+    //Utils::isTouched(ts, tft, 16, 16, 32, 32);
 }
 
 void StateSetClock::exit()

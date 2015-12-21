@@ -14,39 +14,88 @@ void StateSetClock::enter()
     sday = day();
     syear = year();
 
-    // calculate position for time string
-    timePosX = (tft->width() / 2) - (((Utils::FONT_SIZE_W * 16) * STATE_SETCLOCK_FONT_SIZE) / 2);    
+    // calculate position for time/date strings
+    timePosX = (utils->tft->width() / 2) - (((FONT_SIZE_W * STATE_SETCLOCK_TIME_LENGTH) * STATE_SETCLOCK_FONT_SIZE) / 2);
 
-    // draw one time elements
-    tft->fillScreen(STATE_SETCLOCK_BG_COLOR);
+    // clear screen
+    utils->tft->fillScreen(STATE_SETCLOCK_BG_COLOR);
+
+    // draw title text
+    utils->drawString(
+        STATE_SETCLOCK_TITLE_X,
+        STATE_SETCLOCK_TITLE_Y,
+        "Set Time & Date",
+        STATE_SETCLOCK_TEXT_COLOR,
+        STATE_SETCLOCK_BG_COLOR,
+        STATE_SETCLOCK_FONT_SIZE
+    );
+
+    utils->tft->drawFastHLine(
+        0,
+        STATE_SETCLOCK_TITLE_Y + (FONT_SIZE_H * STATE_SETCLOCK_FONT_SIZE) + 4,
+        utils->tft->width(),
+        STATE_SETCLOCK_TEXT_COLOR
+    );
+
+    // done button
+    /*utils->tft->fillRect(
+        0,
+        utils->tft->height() - STATE_SETCLOCK_DONE_H,
+        utils->tft->width(),
+        STATE_SETCLOCK_DONE_H,
+        STATE_SETCLOCK_DONE_BG_COLOR
+    );
+    utils->drawString(
+        (utils->tft->width() / 2) - (((4 * FONT_SIZE_W) * STATE_SETCLOCK_FONT_SIZE) / 2),
+        (utils->tft->height() - STATE_SETCLOCK_DONE_H) + 1 + (STATE_SETCLOCK_DONE_H / 2) - ((FONT_SIZE_H * STATE_SETCLOCK_FONT_SIZE) / 2),
+        "DONE",
+        STATE_SETCLOCK_DONE_TEXT_COLOR,
+        STATE_SETCLOCK_DONE_BG_COLOR,
+        STATE_SETCLOCK_FONT_SIZE
+    );
+    utils->tft->drawFastHLine(
+        0,
+        utils->tft->height() - STATE_SETCLOCK_DONE_H,
+        utils->tft->width(),
+        STATE_SETCLOCK_DONE_SEP_COLOR
+    );*/
 
     // up arrows
-    uint8_t arrowCenter = ((((Utils::FONT_SIZE_W * 2) * STATE_SETCLOCK_FONT_SIZE) / 2) - (BITMAP_ARROW_UP_W / 2));
+    /*uint8_t arrowCenter = ((((FONT_SIZE_W * 2) * STATE_SETCLOCK_FONT_SIZE) / 2) - (STATE_SETCLOCK_ARROW_W / 2));
     for (uint8_t i = 0; i < 3; i++) {
-        tft->drawBitmap(
-            timePosX + (i * ((Utils::FONT_SIZE_W * 2) * 7)) + arrowCenter,
-            32,
-            BITMAP_ARROW_UP,
-            BITMAP_ARROW_UP_W,
-            BITMAP_ARROW_UP_H,
-            STATE_SETCLOCK_ARROW_COLOR
+        utils->drawBitmap(
+            "icons/arr_up.bmp",
+            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+            STATE_SETCLOCK_TIME_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING
+        );
+        utils->drawBitmap(
+            "icons/arr_up.bmp",
+            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+            STATE_SETCLOCK_DATE_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING
         );
     }
 
     // down arrows
     for (uint8_t i = 0; i < 3; i++) {
-        tft->drawBitmap(
-            timePosX + (i * ((Utils::FONT_SIZE_W * 2) * 7)) + arrowCenter,
-            96,
-            BITMAP_ARROW_DOWN,
-            BITMAP_ARROW_DOWN_W,
-            BITMAP_ARROW_DOWN_H,
-            STATE_SETCLOCK_ARROW_COLOR
+        utils->drawBitmap(
+            "icons/arr_dwn.bmp",
+            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+            STATE_SETCLOCK_TIME_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING
         );
-    }
+        utils->drawBitmap(
+            "icons/arr_dwn.bmp",
+            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+            STATE_SETCLOCK_DATE_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING
+        );
+    }*/
 
     // draw elements that will be redrawn
     redraw();
+
+    delay(4000);
+    State::changeState(
+        StateMain::ID
+    );
 }
 
 void StateSetClock::loop()
@@ -62,7 +111,7 @@ void StateSetClock::exit()
 void StateSetClock::redraw()
 {
 
-    char timeString[16];
+    char timeString[STATE_SETCLOCK_TIME_LENGTH];
     sprintf(
         timeString,
         "%s%d  :  %s%d  :  %s",
@@ -72,13 +121,32 @@ void StateSetClock::redraw()
         sminute,
         pm ? "PM" : "AM"
     );
-    Utils::drawString(
-        tft,
+    utils->drawString(
         timePosX,
-        64,
+        STATE_SETCLOCK_TIME_Y,
         timeString,
         STATE_SETCLOCK_TEXT_COLOR,
         STATE_SETCLOCK_BG_COLOR,
         STATE_SETCLOCK_FONT_SIZE
     );
+
+    char dateString[STATE_SETCLOCK_DATE_LENGTH];
+    sprintf(
+        dateString,
+        "%s%d  /  %s%d  /  %d",
+        (smonth < 10) ? "0" : "",
+        smonth,
+        (sday < 10) ? "0" : "",
+        sday,
+        syear
+    );
+    utils->drawString(
+        timePosX,
+        STATE_SETCLOCK_DATE_Y,
+        dateString,
+        STATE_SETCLOCK_TEXT_COLOR,
+        STATE_SETCLOCK_BG_COLOR,
+        STATE_SETCLOCK_FONT_SIZE
+    );
+
 }

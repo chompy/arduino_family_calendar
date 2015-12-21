@@ -1,0 +1,6 @@
+title=K. & S. Lipson
+type=anniversary
+month=8
+day=14
+year=2005
+rrule=FREQ=YEARLY

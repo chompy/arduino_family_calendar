@@ -1,0 +1,6 @@
+title=Jon Conley
+type=bday
+month=11
+day=15
+year=1970
+rrule=FREQ=YEARLY

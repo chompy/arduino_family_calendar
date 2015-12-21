@@ -1,0 +1,6 @@
+title=Father's Day
+type=holiday
+month=6
+day=1
+year=1970
+rrule=FREQ=YEARLY;BYDAY=3SU;BYMONTH=6

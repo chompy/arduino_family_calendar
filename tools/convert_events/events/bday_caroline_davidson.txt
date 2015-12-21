@@ -1,0 +1,6 @@
+title=Caroline Davidson
+type=bday
+month=11
+day=24
+year=1991
+rrule=FREQ=YEARLY

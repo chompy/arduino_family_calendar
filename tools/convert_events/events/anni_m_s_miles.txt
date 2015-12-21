@@ -1,0 +1,6 @@
+title=M. & S. Miles
+type=anniversary
+month=7
+day=8
+year=1970
+rrule=FREQ=YEARLY

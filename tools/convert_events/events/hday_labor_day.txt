@@ -1,0 +1,6 @@
+title=Labor Day
+type=holiday
+month=9
+day=1
+year=1970
+rrule=FREQ=YEARLY;BYDAY=1MO;BYMONTH=9

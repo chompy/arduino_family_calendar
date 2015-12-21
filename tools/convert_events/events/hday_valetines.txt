@@ -1,0 +1,6 @@
+title=Valetine's Day
+type=holiday
+month=2
+day=14
+year=1970
+rrule=FREQ=YEARLY

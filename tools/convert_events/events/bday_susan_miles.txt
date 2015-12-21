@@ -1,0 +1,6 @@
+title=Susan Miles
+type=bday
+month=4
+day=11
+year=1970
+rrule=FREQ=YEARLY

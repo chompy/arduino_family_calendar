@@ -1,0 +1,6 @@
+title=Christmas Eve
+type=holiday
+month=12
+day=24
+year=1970
+rrule=FREQ=YEARLY

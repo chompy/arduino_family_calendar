@@ -1,0 +1,6 @@
+title=Veterans Day
+type=holiday
+month=11
+day=11
+year=1970
+rrule=FREQ=YEARLY

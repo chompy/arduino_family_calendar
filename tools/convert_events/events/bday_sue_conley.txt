@@ -1,0 +1,6 @@
+title=Sue Conley
+type=bday
+month=7
+day=13
+year=1970
+rrule=FREQ=YEARLY

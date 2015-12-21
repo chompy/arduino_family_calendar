@@ -1,0 +1,6 @@
+title=Mike Conley
+type=bday
+month=4
+day=10
+year=1970
+rrule=FREQ=YEARLY

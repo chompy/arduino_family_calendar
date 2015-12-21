@@ -1,0 +1,6 @@
+title=Mike Ogden
+type=bday
+month=6
+day=2
+year=1946
+rrule=FREQ=YEARLY

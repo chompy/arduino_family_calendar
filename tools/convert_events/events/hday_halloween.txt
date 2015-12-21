@@ -1,0 +1,6 @@
+title=Halloween
+type=holiday
+month=10
+day=31
+year=1970
+rrule=FREQ=YEARLY

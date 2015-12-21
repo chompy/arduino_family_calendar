@@ -1,0 +1,6 @@
+title=Casey Burke
+type=bday
+month=4
+day=10
+year=1986
+rrule=FREQ=YEARLY

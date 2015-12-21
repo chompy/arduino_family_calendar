@@ -1,0 +1,6 @@
+title=Mike Miles
+type=bday
+month=12
+day=25
+year=1970
+rrule=FREQ=YEARLY

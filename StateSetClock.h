@@ -2,27 +2,40 @@
 #define __CAL_STATE_SETCLOCK__
 
 #include <Time.h>
-#include <string.h>
-
 #include "SPI.h"
-#include <Adafruit_TFTLCD.h>
-#include <TouchScreen.h>
-
 #include "State.h"
 #include "Utils.h"
 
+#include "StateMain.h"
+
 #define STATE_SETCLOCK_BG_COLOR 0x0000
 #define STATE_SETCLOCK_TEXT_COLOR 0xFFFF
-#define STATE_SETCLOCK_ARROW_COLOR 0xF800
+
+#define STATE_SETCLOCK_DONE_BG_COLOR 0xF800
+#define STATE_SETCLOCK_DONE_TEXT_COLOR 0xFFFF
+#define STATE_SETCLOCK_DONE_SEP_COLOR 0xFFFF
+#define STATE_SETCLOCK_DONE_H 32
+
+#define STATE_SETCLOCK_TITLE_X 8
+#define STATE_SETCLOCK_TITLE_Y 8
+#define STATE_SETCLOCK_ARROW_W 16
+#define STATE_SETCLOCK_ARROW_H 16
+#define STATE_SETCLOCK_ARROW_SPACING 8
 #define STATE_SETCLOCK_FONT_SIZE 2
+#define STATE_SETCLOCK_TIME_Y 68
+#define STATE_SETCLOCK_TIME_LENGTH 16
+#define STATE_SETCLOCK_DATE_Y 148
+#define STATE_SETCLOCK_DATE_LENGTH 18
 
 class StateSetClock : public State
 {
 public:
-    StateSetClock(Adafruit_TFTLCD* _tft, TouchScreen* _ts) : State()
+
+    static const uint8_t ID = 2;
+
+    StateSetClock(Utils* _utils) : State()
     {
-        tft = _tft;
-        ts = _ts;
+        utils = _utils;
     }
     ~StateSetClock();
 
@@ -31,8 +44,7 @@ public:
     void exit();
 
 private:
-    Adafruit_TFTLCD* tft;
-    TouchScreen* ts;
+    Utils* utils;
     
     uint16_t timePosX;
 

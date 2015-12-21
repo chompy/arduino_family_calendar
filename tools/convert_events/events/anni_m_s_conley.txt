@@ -1,0 +1,6 @@
+title=M. & S. Conley
+type=anniversary
+month=6
+day=17
+year=1970
+rrule=FREQ=YEARLY

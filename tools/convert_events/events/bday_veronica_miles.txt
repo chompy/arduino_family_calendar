@@ -1,0 +1,6 @@
+title=Veronica Miles
+type=bday
+month=9
+day=27
+year=1986
+rrule=FREQ=YEARLY

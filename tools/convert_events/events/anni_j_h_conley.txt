@@ -1,0 +1,6 @@
+title=J. & H. Conley
+type=anniversary
+month=1
+day=30
+year=1970
+rrule=FREQ=YEARLY

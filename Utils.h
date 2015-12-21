@@ -1,11 +1,11 @@
 #ifndef __CAL_UTILS__
 #define __CAL_UTILS__
 
-#include <string.h>
-
+#include "Time.h"
 #include "SPI.h"
 #include <Adafruit_TFTLCD.h>
 #include "TouchScreen.h"
+#include <SD.h>
 
 // Touch screen settings
 #define TS_MINX 150
@@ -15,31 +15,59 @@
 #define TS_MINPRESSURE 10
 #define TS_MAXPRESSURE 1000
 
+// Bitmap draw setting
+#define BUFFPIXEL 20
+
+// Font settings
+#define FONT_SIZE_W 6
+#define FONT_SIZE_H 8
+
+// Date/time display settings
+#define DISPLAY_DATETIME_TEXT_COLOR 0xFFFF
+#define DISPLAY_DATETIME_BG_COLOR 0x0000
+#define DISPLAY_TIME_LENGTH 8
+#define DISPLAY_TIME_FONT_SIZE 2
+#define DISPLAY_DATE_SPACING 4
+#define DISPLAY_DATE_LENGTH 10
+#define DISPLAY_DATE_FONT_SIZE 1
+
+// Event display settings
+#define DISPLAY_EVENT_COUNT 5
+#define DISPLAY_EVENT_TEXT_COLOR 0xFFFF
+#define DISPLAY_EVENT_BG_COLOR 0x0000
+#define DISPLAY_EVENT_FONT_SIZE 1
+#define DISPLAY_EVENT_LENGTH 13
+#define DISPLAY_EVENT_DATE_FONT_SIZE 1
+#define DISPLAY_EVENT_DATE_PADDING 3
+#define DISPLAY_EVENT_PADDING 16
+#define DISPLAY_EVENT_OFFSET_Y 16
+#define DISPLAY_EVENT_ICON_XOFFSET 12
+#define DISPLAY_EVENT_XOFFSET 25
+
 class Utils
 {
 public:
-	static const uint8_t PROGMEM FONT_SIZE_W = 6;
-	static const uint8_t PROGMEM FONT_SIZE_H = 8;
-	static void drawString(Adafruit_TFTLCD* tft, uint16_t x, uint16_t y, char* string, uint16_t fg, uint16_t bg, uint8_t size);
-    
-    static bool isTouched(TouchScreen* ts, Adafruit_TFTLCD* tft, uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 
-};
+    Adafruit_TFTLCD* tft;
 
-// Bitmap arrow up
-const uint8_t BITMAP_ARROW_UP_W = 16;
-const uint8_t BITMAP_ARROW_UP_H = 16;
-const uint8_t PROGMEM BITMAP_ARROW_UP [] = {
-0x00, 0x00, 0x00, 0x80, 0x01, 0x80, 0x01, 0xC0, 0x03, 0xC0, 0x03, 0xE0, 0x07, 0xE0, 0x0F, 0xF0,
-0x0F, 0xF0, 0x1F, 0xF8, 0x1F, 0xF8, 0x3F, 0xFC, 0x3F, 0xFC, 0x7F, 0xFC, 0x7F, 0xFE, 0xFF, 0xFE
-};
+    Utils(Adafruit_TFTLCD* _tft, TouchScreen* _ts);
+    ~Utils();
 
-// Bitmap arrow down
-const uint8_t BITMAP_ARROW_DOWN_W = 16;
-const uint8_t BITMAP_ARROW_DOWN_H = 16;
-const uint8_t PROGMEM BITMAP_ARROW_DOWN [] = {
-0xFF, 0xFE, 0x7F, 0xFE, 0x7F, 0xFC, 0x3F, 0xFC, 0x3F, 0xFC, 0x1F, 0xF8, 0x1F, 0xF8, 0x0F, 0xF0,
-0x0F, 0xF0, 0x07, 0xE0, 0x03, 0xE0, 0x03, 0xC0, 0x01, 0xC0, 0x01, 0x80, 0x00, 0x80, 0x00, 0x00
+    // draw functions
+    void drawString(uint16_t x, uint16_t y, char* string, uint16_t fg, uint16_t bg, uint8_t size);
+    void drawBitmap(char *filename, int x, int y);
+
+    // other misc
+    bool isTouched(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+
+private:
+    TouchScreen* ts;
+
+    uint8_t lastDay;
+    uint8_t lastMinute;
+
+    uint16_t read16(File f);
+    uint32_t read32(File f);
 };
 
 #endif

@@ -1,0 +1,6 @@
+title=S. & C. Davidson
+type=anniversary
+month=10
+day=6
+year=1970
+rrule=FREQ=YEARLY

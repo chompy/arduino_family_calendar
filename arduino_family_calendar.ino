@@ -3,12 +3,12 @@
 #include <SPI.h>
 #include <SD.h>
 #include <TouchScreen.h>
-#include <Time.h>
+#include "Utils.h"
 
 #include "State.h"
-#include "StateError.h"
-#include "StateSetClock.h"
 #include "StateMain.h"
+#include "StateSetClock.h"
+#include "StateError.h"
 
 // Touch Settings
 #define YP A2
@@ -24,7 +24,7 @@ TouchScreen ts(XP, YP, XM, YM, 300);
 #define LCD_WR A1
 #define LCD_RD A0 
 #define LCD_RESET A4
-#define ROTATION 1
+#define ROTATION 3
 
 //TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
@@ -40,21 +40,30 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define WHITE           0xFFFF
 
 // Default time
-#define TIME_DEFAULT_HOUR 23
-#define TIME_DEFAULT_MINUTE 59
-#define TIME_DEFAULT_MONTH 1
-#define TIME_DEFAULT_DAY 1
-#define TIME_DEFAULT_YEAR 2016
+#define TIME_DEFAULT_HOUR 1
+#define TIME_DEFAULT_MINUTE 12
+#define TIME_DEFAULT_MONTH 12
+#define TIME_DEFAULT_DAY 20
+#define TIME_DEFAULT_YEAR 2015
 
+// Vars
+uint8_t photoCount = 0;
+time_t lastPhotoChange = 0;
+uint8_t currentPhoto = 0;
+
+// Utility Class
+Utils utils(&tft, &ts);
+
+// init function
 void setup(void) {
 
     // init
     Serial.begin(9600);
     tft.reset();
-    tft.begin(0x9341); 
-    tft.fillScreen(BLUE);
+    tft.begin(); 
+    tft.fillScreen(BLACK);
     tft.setRotation(ROTATION);
-    pinMode(13, OUTPUT);
+    //pinMode(13, OUTPUT);
 
     // time in 12 hour format
     setTime(
@@ -64,67 +73,68 @@ void setup(void) {
         TIME_DEFAULT_DAY,
         TIME_DEFAULT_MONTH,
         TIME_DEFAULT_YEAR
-    );    
+    );
+    randomSeed(now());
 
     // boot sd
     if (!SD.begin()) {
-        Serial.println("SD Card failed, or not present");
-
+        StateError::setMessage("SD Card failed, or not present");
         State::changeState(
-            new StateError(
-                &tft,
-                "SD Card failed, or not present"
-            )
+            StateError::ID
         );
-
         return;
     }
 
-    // enter state 'SetClock'
+    // goto state
     State::changeState(
-        new StateMain(
-            &tft
-        )
+        StateSetClock::ID
     );
 
-    //Serial.println( SD.exists("events/bday_nso.txt") ? "HAS" : "NARP" );
 }
 
+// main loop
 void loop()
 {
 
+    // new state
+    if (State::hasNextState()) {
+        // states
+        switch(State::getNextState())
+        {
+            case StateError::ID:
+            {
+                State::changeState(
+                    new StateError(
+                        &utils
+                    )
+                );
+                break;
+            }
+            case StateMain::ID:
+            {
+                State::changeState(
+                    new StateMain(
+                        &utils
+                    )
+                );
+                break;
+            }
+            case StateSetClock::ID:
+            {
+                State::changeState(
+                    new StateSetClock(
+                        &utils
+                    )
+                );
+                break;
+            }        
+        }        
+    }
+
+    // state loop
     State::loopCurrent();
 
-    /*char timeStr[8];
-    sprintf(
-        timeStr,
-        "%d:%d:%d",
-        hour(),
-        minute(),
-        second()
-    );
-
-    tft.fillRect(32, 32, 240, 16, BLUE);
-    tft.fillRect(32, 64, 240, 16, BLUE);
-
-    tft.drawString(
-        32,
-        32,
-        timeStr,
-        WHITE,
-        2
-    );
-
-    digitalWrite(13, HIGH);
-    Point p = ts.getPoint();
-    digitalWrite(13, LOW);
-
-    pinMode(XM, OUTPUT);
-    pinMode(YP, OUTPUT);
-    pinMode(YM, OUTPUT);
-    */
-
-    // 1/15 second
-    delay(67);
+    // 1/5 second
+    delay(200);
 
 }

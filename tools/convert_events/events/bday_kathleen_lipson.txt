@@ -3,3 +3,4 @@ type=bday
 month=3
 day=28
 year=1990
+rrule=FREQ=YEARLY

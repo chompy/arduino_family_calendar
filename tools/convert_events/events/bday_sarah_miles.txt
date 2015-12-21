@@ -1,0 +1,6 @@
+title=Sarah Miles
+type=bday
+month=7
+day=16
+year=1990
+rrule=FREQ=YEARLY

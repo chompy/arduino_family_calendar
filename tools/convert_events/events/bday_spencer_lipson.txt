@@ -1,0 +1,6 @@
+title=Spencer Lipson
+type=bday
+month=1
+day=30
+year=1990
+rrule=FREQ=YEARLY

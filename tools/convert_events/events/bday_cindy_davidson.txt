@@ -1,0 +1,6 @@
+title=Cindy Davidson
+type=bday
+month=5
+day=11
+year=1970
+rrule=FREQ=YEARLY

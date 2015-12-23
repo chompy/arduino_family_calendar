@@ -1,7 +1,7 @@
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 #include <SPI.h>
-#include <SD.h>
+#include <tinyFAT.h>
 #include <TouchScreen.h>
 #include "Utils.h"
 
@@ -9,12 +9,15 @@
 #include "StateMain.h"
 #include "StateSetClock.h"
 #include "StateError.h"
+#include "StateSplash.h"
 
 // Touch Settings
 #define YP A2
 #define XM A3
 #define YM 8
 #define XP 9
+#define TS_MINPRESSURE 10
+#define TS_MAXPRESSURE 1000
 
 TouchScreen ts(XP, YP, XM, YM, 300);
 
@@ -40,10 +43,10 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define WHITE           0xFFFF
 
 // Default time
-#define TIME_DEFAULT_HOUR 1
-#define TIME_DEFAULT_MINUTE 12
+#define TIME_DEFAULT_HOUR 12
+#define TIME_DEFAULT_MINUTE 0
 #define TIME_DEFAULT_MONTH 12
-#define TIME_DEFAULT_DAY 20
+#define TIME_DEFAULT_DAY 25
 #define TIME_DEFAULT_YEAR 2015
 
 // Vars
@@ -52,7 +55,7 @@ time_t lastPhotoChange = 0;
 uint8_t currentPhoto = 0;
 
 // Utility Class
-Utils utils(&tft, &ts);
+Utils utils(&tft);
 
 // init function
 void setup(void) {
@@ -63,9 +66,8 @@ void setup(void) {
     tft.begin(); 
     tft.fillScreen(BLACK);
     tft.setRotation(ROTATION);
-    //pinMode(13, OUTPUT);
 
-    // time in 12 hour format
+    // set time
     setTime(
         TIME_DEFAULT_HOUR,
         TIME_DEFAULT_MINUTE,
@@ -77,7 +79,8 @@ void setup(void) {
     randomSeed(now());
 
     // boot sd
-    if (!SD.begin()) {
+    byte res = file.initFAT();
+    if (res != NO_ERROR) {
         StateError::setMessage("SD Card failed, or not present");
         State::changeState(
             StateError::ID
@@ -87,7 +90,7 @@ void setup(void) {
 
     // goto state
     State::changeState(
-        StateSetClock::ID
+        StateSplash::ID
     );
 
 }
@@ -127,12 +130,43 @@ void loop()
                     )
                 );
                 break;
-            }        
+            }
+            case StateSplash::ID:
+            {
+                State::changeState(
+                    new StateSplash(
+                        &utils
+                    )
+                );
+                break;
+            }
         }        
     }
 
     // state loop
     State::loopCurrent();
+
+    // read touch status
+    uint16_t pressure = ts.pressure();
+    if (pressure > TS_MINPRESSURE && pressure < TS_MAXPRESSURE) {
+        utils.updateTouchState( ts.readTouchX(), ts.readTouchY() );  
+    } else {
+        utils.updateTouchState( -1, -1 );  
+    }
+
+    //digitalWrite(13, HIGH);
+    // Recently Point was renamed TSPoint in the TouchScreen library
+    // If you are using an older version of the library, use the
+    // commented definition instead.
+    // Point p = ts.getPoint();
+    //TSPoint p = ts.getPoint();
+    //digitalWrite(13, LOW);
+
+    // if sharing pins, you'll need to fix the directions of the touchscreen pins
+    pinMode(XP, OUTPUT);
+    pinMode(XM, OUTPUT);
+    pinMode(YP, OUTPUT);
+    pinMode(YM, OUTPUT);
 
     // 1/5 second
     delay(200);

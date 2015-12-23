@@ -27,6 +27,9 @@
 #define STATE_SETCLOCK_DATE_Y 148
 #define STATE_SETCLOCK_DATE_LENGTH 18
 
+#define STATE_SETCLOCK_ARROW_BUTTON_W 48
+#define STATE_SETCLOCK_ARROW_BUTTON_H 48
+
 class StateSetClock : public State
 {
 public:
@@ -48,13 +51,13 @@ private:
     
     uint16_t timePosX;
 
-    uint8_t shour;
-    uint8_t sminute;
+    int8_t shour;
+    int8_t sminute;
     bool pm;
 
-    uint8_t smonth;
-    uint8_t sday;
-    uint16_t syear;
+    int8_t smonth;
+    int8_t sday;
+    int16_t syear;
 
     void redraw();
 

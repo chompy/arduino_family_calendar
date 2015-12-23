@@ -1,0 +1,6 @@
+title=Thanksgiving
+type=holiday
+month=11
+day=1
+year=1970
+rrule=FREQ=YEARLY;BYDAY=4TH;BYMONTH=11

@@ -5,6 +5,7 @@
 #include "SPI.h"
 #include "State.h"
 #include "Utils.h"
+#include "StateSetClock.h"
 
 // Event parser settings
 #define EVENT_DATA_LENGTH 26
@@ -18,8 +19,6 @@
 
 // State settings
 #define STATE_MAIN_BG_COLOR 0x0000
-#define STATE_MAIN_BITMAP_COLOR 0xFFE0
-#define STATE_MAIN_TEXT_COLOR 0xFFFF
 #define STATE_MAIN_EVENT_DATE_TEXT_COLOR 0x9e9e
 #define STATE_MAIN_LIST_W 120
 #define STATE_MAIN_TIME_Y 12

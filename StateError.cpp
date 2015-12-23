@@ -34,5 +34,10 @@ void StateError::exit()
 
 void StateError::setMessage(char* _message)
 {
-    StateError::message = _message;
+    if (StateError::message) {
+        delete StateError::message;
+        StateError::message = nullptr;
+    }
+    StateError::message = new char[strlen(_message)];
+    strcpy(StateError::message, _message);
 }

@@ -9,7 +9,6 @@ void StateSetClock::enter()
 {
     shour = hour();
     sminute = minute();
-    pm = isPM();
     smonth = month();
     sday = day();
     syear = year();
@@ -38,7 +37,7 @@ void StateSetClock::enter()
     );
 
     // done button
-    /*utils->tft->fillRect(
+    utils->tft->fillRect(
         0,
         utils->tft->height() - STATE_SETCLOCK_DONE_H,
         utils->tft->width(),
@@ -58,49 +57,257 @@ void StateSetClock::enter()
         utils->tft->height() - STATE_SETCLOCK_DONE_H,
         utils->tft->width(),
         STATE_SETCLOCK_DONE_SEP_COLOR
-    );*/
+    );
 
-    // up arrows
-    /*uint8_t arrowCenter = ((((FONT_SIZE_W * 2) * STATE_SETCLOCK_FONT_SIZE) / 2) - (STATE_SETCLOCK_ARROW_W / 2));
-    for (uint8_t i = 0; i < 3; i++) {
-        utils->drawBitmap(
-            "icons/arr_up.bmp",
-            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
-            STATE_SETCLOCK_TIME_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING
-        );
-        utils->drawBitmap(
-            "icons/arr_up.bmp",
-            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
-            STATE_SETCLOCK_DATE_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING
-        );
+    // open icons file
+    if (utils->fileOpen("icons.dat")) {
+
+        // up arrows
+        uint8_t arrowCenter = ((((FONT_SIZE_W * 2) * STATE_SETCLOCK_FONT_SIZE) / 2) - (STATE_SETCLOCK_ARROW_W / 2));
+        for (uint8_t i = 0; i < 3; i++) {
+            utils->fileSeek(1);
+            utils->drawImage(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+                STATE_SETCLOCK_TIME_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING - 1,
+                ICON_ARROW_UP
+            );
+            utils->fileSeek(1);
+            utils->drawImage(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+                STATE_SETCLOCK_DATE_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING - 1,
+                ICON_ARROW_UP
+            );
+        }
+
+        // down arrows
+        for (uint8_t i = 0; i < 3; i++) {
+            utils->fileSeek(1);
+            utils->drawImage(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+                STATE_SETCLOCK_TIME_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING,
+                ICON_ARROW_DOWN
+            );
+            utils->fileSeek(1);
+            utils->drawImage(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
+                STATE_SETCLOCK_DATE_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING,
+                ICON_ARROW_DOWN
+            );           
+        }
     }
-
-    // down arrows
-    for (uint8_t i = 0; i < 3; i++) {
-        utils->drawBitmap(
-            "icons/arr_dwn.bmp",
-            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
-            STATE_SETCLOCK_TIME_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING
-        );
-        utils->drawBitmap(
-            "icons/arr_dwn.bmp",
-            timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
-            STATE_SETCLOCK_DATE_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING
-        );
-    }*/
 
     // draw elements that will be redrawn
     redraw();
 
-    delay(4000);
-    State::changeState(
-        StateMain::ID
-    );
 }
 
 void StateSetClock::loop()
 {
-    //Utils::isTouched(ts, tft, 16, 16, 32, 32);
+
+    uint8_t arrowCenter = ((((FONT_SIZE_W * 2) * STATE_SETCLOCK_FONT_SIZE) / 2) - (STATE_SETCLOCK_ARROW_W / 2));
+    for (uint8_t i = 0; i < 3; i++) {
+
+        // time upper
+        if (
+            utils->isTouched(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter - (STATE_SETCLOCK_ARROW_BUTTON_W / 2),
+                STATE_SETCLOCK_TIME_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING - (STATE_SETCLOCK_ARROW_BUTTON_H / 2),
+                STATE_SETCLOCK_ARROW_BUTTON_W,
+                STATE_SETCLOCK_ARROW_BUTTON_H
+            )
+        ) {
+
+            switch(i) {
+                case 0:
+                {
+                    shour++;
+                    if (shour > 23) {
+                        shour = 0;
+                    }
+                    break;
+                }
+                case 1:
+                {
+                    sminute++;
+                    if (sminute > 59) {
+                        sminute = 0;
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    if (shour > 11) {
+                        shour -= 12;
+                    } else {
+                        shour += 12;
+                    }
+                    break;
+                }
+            }
+            redraw();
+        }
+
+        // time lower
+        if (
+            utils->isTouched(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter - (STATE_SETCLOCK_ARROW_BUTTON_W / 2),
+                STATE_SETCLOCK_TIME_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING - (STATE_SETCLOCK_ARROW_BUTTON_H / 2),
+                STATE_SETCLOCK_ARROW_BUTTON_W,
+                STATE_SETCLOCK_ARROW_BUTTON_H
+            )
+        ) {
+
+            switch(i) {
+                case 0:
+                {
+                    shour--;
+                    if (shour < 0) {
+                        shour = 23;
+                    }
+                    break;
+                }
+                case 1:
+                {
+                    sminute--;
+                    if (sminute < 0) {
+                        sminute = 59;
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    if (shour > 11) {
+                        shour -= 12;
+                    } else {
+                        shour += 12;
+                    }
+                    break;
+                }
+            }
+            redraw();
+
+        }
+
+        // date upper
+        if (
+            utils->isTouched(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter - (STATE_SETCLOCK_ARROW_BUTTON_W / 2),
+                STATE_SETCLOCK_DATE_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING - (STATE_SETCLOCK_ARROW_BUTTON_W / 2),
+                STATE_SETCLOCK_ARROW_BUTTON_W,
+                STATE_SETCLOCK_ARROW_BUTTON_H
+            )
+        ) {
+
+            switch(i) {
+                case 0:
+                {
+                    smonth++;
+                    if (smonth > 12) {
+                        smonth = 1;
+                    }
+                    if (sday > utils->daysInMonth(smonth, syear)) {
+                        sday = utils->daysInMonth(smonth, syear);
+                    }
+                    break;
+                }
+                case 1:
+                {
+                    sday++;
+                    if (sday > utils->daysInMonth(smonth, syear)) {
+                        sday = 1;
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    syear++;
+                    if (syear > 9999) {
+                        syear = 1970;
+                    }
+                    if (smonth == 2 && sday > utils->daysInMonth(smonth, syear)) {
+                        sday = utils->daysInMonth(smonth, syear);
+                    }
+                    break;
+                }
+            }
+            redraw();
+        }
+
+        // date lower
+        if (
+            utils->isTouched(
+                timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter - (STATE_SETCLOCK_ARROW_BUTTON_W / 2),
+                STATE_SETCLOCK_DATE_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING - (STATE_SETCLOCK_ARROW_BUTTON_H / 2),
+                STATE_SETCLOCK_ARROW_BUTTON_W,
+                STATE_SETCLOCK_ARROW_BUTTON_H
+            )
+        ) {
+
+            switch(i) {
+                case 0:
+                {
+                    smonth--;
+                    if (smonth < 1) {
+                        smonth = 12;
+                    }
+                    if (sday > utils->daysInMonth(smonth, syear)) {
+                        sday = utils->daysInMonth(smonth, syear);
+                    }
+                    break;
+                }
+                case 1:
+                {
+                    sday--;
+                    if (sday < 1) {
+                        sday = utils->daysInMonth(smonth, syear);
+                    }
+                    break;
+                }
+                case 2:
+                {
+                    syear--;
+                    if (syear < 1970) {
+                        syear = 9999;
+                    }
+                    if (smonth == 2 && sday > utils->daysInMonth(smonth, syear)) {
+                        sday = utils->daysInMonth(smonth, syear);
+                    }
+                    break;
+                }
+            }
+            redraw();
+
+        }
+
+    }
+
+    // done button
+    if (
+        utils->isTouched(
+            0,
+            utils->tft->height() - STATE_SETCLOCK_DONE_H,
+            utils->tft->width(),
+            STATE_SETCLOCK_DONE_H
+        )
+    ) {
+        // set time
+        setTime(
+            shour,
+            sminute,
+            0,
+            sday,
+            smonth,
+            syear
+        );
+        randomSeed(now());
+
+        // goto main state
+        State::changeState(
+            StateMain::ID
+        );
+    }
+
+
 }
 
 void StateSetClock::exit()
@@ -115,11 +322,11 @@ void StateSetClock::redraw()
     sprintf(
         timeString,
         "%s%d  :  %s%d  :  %s",
-        (shour < 10) ? "0" : "",
-        shour,
+        ((shour > 0 && shour < 10) || (shour > 12 && shour < 22)) ? "0" : "",
+        shour == 0 ? 12 : (shour > 12 ? shour - 12 : shour),
         (sminute < 10) ? "0" : "",
         sminute,
-        pm ? "PM" : "AM"
+        shour > 11 ? "PM" : "AM"
     );
     utils->drawString(
         timePosX,

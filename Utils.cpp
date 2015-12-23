@@ -1,12 +1,19 @@
 #include "Utils.h"
 
-Utils::Utils(Adafruit_TFTLCD* _tft, TouchScreen* _ts)
+Utils::Utils(Adafruit_TFTLCD* _tft)
 {
     tft = _tft;
-    ts = _ts;
+
+    hasTouch = false;
+    touchX = 0;
+    touchY = 0;
 
     lastMinute = 99;
     lastDay = 99;
+
+    currentFile = nullptr;
+    _filePosition = 0;
+
 }
 
 Utils::~Utils()
@@ -31,141 +38,239 @@ void Utils::drawString(uint16_t x, uint16_t y, char* string, uint16_t fg, uint16
     }
 }
 
-bool Utils::isTouched(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+// draws given image number from image sequence data 
+// contained in currently opened file
+void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number)
 {
-    return false;
-    /*
-    TSPoint p = ts->getPoint();
-    if (!(p.z > TS_MINPRESSURE && p.z < TS_MAXPRESSURE)) {
-        return false;
-    }
-    p.x = map(p.x, TS_MINX, TS_MAXX, 0, tft->width());
-    p.y = map(p.y, TS_MINY, TS_MAXY, 0, tft->width());
-    return false;
-    */
-}
-
-void Utils::drawBitmap(char *filename, int x, int y) {
-
-    File     bmpFile;
-    int      bmpWidth, bmpHeight;   // W+H in pixels
-    uint8_t  bmpDepth;              // Bit depth (currently must be 24)
-    uint32_t bmpImageoffset;        // Start of image data in file
-    uint32_t rowSize;               // Not always = bmpWidth; may have padding
-    uint8_t  sdbuffer[3*BUFFPIXEL]; // pixel in buffer (R+G+B per pixel)
-    uint16_t lcdbuffer[BUFFPIXEL];  // pixel out buffer (16-bit per pixel)
-    uint8_t  buffidx = sizeof(sdbuffer); // Current position in sdbuffer
-    boolean  flip    = true;        // BMP is stored bottom-to-top
-    int      w, h, row, col;
-    uint8_t  r, g, b;
-    uint32_t pos = 0, startTime = millis();
-    uint8_t  lcdidx = 0;
-    boolean  first = true;
-
-    if((x >= tft->width()) || (y >= tft->height())) return;
-
-    // Open requested file on SD card
-    if ((bmpFile = SD.open(filename)) == NULL) {
+    if (!hasFile()) {
         return;
     }
 
-    // Parse BMP header
-    if(read16(bmpFile) == 0x4D42) {
-        // BMP signature
-        read32(bmpFile);
+    uint32_t photoSize[2];
 
-        (void)read32(bmpFile); // Read & ignore creator bytes
-        bmpImageoffset = read32(bmpFile); // Start of image data
-        read32(bmpFile);
-        bmpWidth  = read32(bmpFile);
-        bmpHeight = read32(bmpFile);
-        if(read16(bmpFile) == 1) { // # planes -- must be '1'
-            bmpDepth = read16(bmpFile); // bits per pixel
-            if((bmpDepth == 24) && (read32(bmpFile) == 0)) { // 0 = uncompressed
+    for (uint8_t i = 0; i <= number; i++) {
 
-                // BMP rows are padded (if needed) to 4-byte boundary
-                rowSize = (bmpWidth * 3 + 3) & ~3;
-
-                // If bmpHeight is negative, image is in top-down order.
-                // This is not canon but has been observed in the wild.
-                if(bmpHeight < 0) {
-                    bmpHeight = -bmpHeight;
-                    flip      = false;
-                }
-
-                // Crop area to be loaded
-                w = bmpWidth;
-                h = bmpHeight;
-                if((x+w-1) >= tft->width())  w = tft->width()  - x;
-                if((y+h-1) >= tft->height()) h = tft->height() - y;
-
-                // Set TFT address window to clipped image bounds
-                tft->setAddrWindow(x, y, x+w-1, y+h-1);
-
-                for (row=0; row<h; row++) { // For each scanline...
-                    // Seek to start of scan line.  It might seem labor-
-                    // intensive to be doing this on every line, but this
-                    // method covers a lot of gritty details like cropping
-                    // and scanline padding.  Also, the seek only takes
-                    // place if the file position actually needs to change
-                    // (avoids a lot of cluster math in SD library).
-                    if(flip) // Bitmap is stored bottom-to-top order (normal BMP)
-                        pos = bmpImageoffset + (bmpHeight - 1 - row) * rowSize;
-                    else     // Bitmap is stored top-to-bottom
-                        pos = bmpImageoffset + row * rowSize;
-                    if(bmpFile.position() != pos) { // Need seek?
-                        bmpFile.seek(pos);
-                        buffidx = sizeof(sdbuffer); // Force buffer reload
-                    }
-
-                    for (col=0; col<w; col++) { // For each column...
-                        // Time to read more pixel data?
-                        if (buffidx >= sizeof(sdbuffer)) { // Indeed
-                            // Push LCD buffer to the display first
-                            if(lcdidx > 0) {
-                                tft->pushColors(lcdbuffer, lcdidx, first);
-                                lcdidx = 0;
-                                first  = false;
-                            }
-                            bmpFile.read(sdbuffer, sizeof(sdbuffer));
-                            buffidx = 0; // Set index to beginning
-                        }
-
-                        // Convert pixel from BMP to TFT format
-                        b = sdbuffer[buffidx++];
-                        g = sdbuffer[buffidx++];
-                        r = sdbuffer[buffidx++];
-                        lcdbuffer[lcdidx++] = tft->color565(r,g,b);
-                    } // end pixel
-                } // end scanline
-                // Write any remaining data to LCD
-                if(lcdidx > 0) {
-                    tft->pushColors(lcdbuffer, lcdidx, first);
-                }
-
-            } // end goodBmp
+        // get size of photo (4 bytes)
+        for (uint8_t j = 0; j < 2; j++) {
+            uint8_t bytes[2];
+            bytes[0] = fileRead();
+            bytes[1] = fileRead();
+            photoSize[j] = 0;
+            photoSize[j] = (photoSize[j] << 8) + bytes[1];
+            photoSize[j] = (photoSize[j] << 8) + bytes[0];
         }
+
+        // is image to draw
+        if (i == number) {
+            break;
+        }
+
+        // next
+        fileSeek(filePosition() + ((photoSize[0] * photoSize[1]) * 2));
     }
 
-    bmpFile.close();
+    // define image draw space
+    tft->setAddrWindow(
+        _x,
+        _y,
+        _x + photoSize[0] - 1,
+        _y + photoSize[1] - 1
+    );
+
+    // iterate file, draw pixel dataj
+    uint32_t endPos = filePosition() + ((photoSize[0] * photoSize[1]) * 2);
+    bool isFirst = true;
+    while(filePosition() < endPos) {
+
+        uint16_t amount = 510;
+        if (512 - filePosition() % 512 < 510) {
+            amount = 512 - filePosition() % 512;
+
+            if (amount % 2 != 0) {
+                amount -= 1;
+                if (amount == 0) {
+                    uint8_t bytes[2];
+                    bytes[0] = fileRead();
+                    bytes[1] = fileRead();
+                    tft->pushColors(
+                        (uint16_t*) &bytes,
+                        1,
+                        false
+                    );
+                    continue;
+                }
+            }
+        }
+        tft->pushColors(
+            (uint16_t*) &file.buffer[ filePosition() % 512 ],
+            endPos - filePosition() < 510 ? (endPos - filePosition()) / 2 : amount / 2,
+            isFirst
+        );
+        isFirst = false;
+        fileSeek(filePosition() + amount);
+    }
+
+
+
 }
 
-// These read 16- and 32-bit types from the SD card file.
-// BMP data is stored little-endian, Arduino is little-endian too.
-// May need to reverse subscript order if porting elsewhere.
+void Utils::updateTouchState(int16_t x, int16_t y)
+{
+    hasTouch = false;
+    if (x < 0 || y < 0) {
+        return;
+    }
+    hasTouch = true;
+    touchX = (uint16_t) map(x, TS_MINX, TS_MAXX, tft->width(), 0);
+    touchY = (uint16_t) map(y, TS_MINY, TS_MAXY, tft->height(), 0);
 
-uint16_t Utils::read16(File f) {
-    uint16_t result;
-    ((uint8_t *)&result)[0] = f.read(); // LSB
-    ((uint8_t *)&result)[1] = f.read(); // MSB
-    return result;
+    char test[12];
+    sprintf(
+        test,
+        "%s%dx%s%d ",
+        x < 10 ? "00" : (x < 100 ? "0" : ""),
+        x,
+        y < 10 ? "00" : (y < 100 ? "0" : ""),
+        y
+    );
+    Serial.println(test);
 }
 
-uint32_t Utils::read32(File f) {
-    uint32_t result;
-    ((uint8_t *)&result)[0] = f.read(); // LSB
-    ((uint8_t *)&result)[1] = f.read();
-    ((uint8_t *)&result)[2] = f.read();
-    ((uint8_t *)&result)[3] = f.read(); // MSB
-    return result;
+bool Utils::isTouched(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+{
+    if (!hasTouch) {
+        return false;
+    }
+    if (
+        touchX > x && 
+        touchX < x + w &&
+        touchY > y &&
+        touchY < y + h
+    ) {
+        return true;
+    }
+    return false;
+}
+
+bool Utils::fileOpen(char* filename)
+{
+    if (hasFile()) {
+        fileClose();
+    }
+    if (file.openFile(filename, FILEMODE_BINARY) == NO_ERROR) {
+        _filePosition = 0;
+        word res = file.readBinary();
+        if (res <= 0 || res > 512) {
+            file.closeFile();
+            return false;
+        }
+
+        currentFile = new char[strlen(filename)];
+        strcpy(currentFile, filename);
+
+        return true;
+    }
+    return false;
+}
+
+void Utils::fileClose()
+{
+    if (!hasFile()) {
+        return;
+    }
+    delete currentFile;
+    currentFile = nullptr;
+    file.closeFile();
+    _filePosition = 0;
+}
+
+bool Utils::hasFile()
+{
+    if (currentFile) {
+        return true;
+    }
+    return false;
+}
+
+bool Utils::fileSeek(uint32_t pos)
+{
+    if (!hasFile()) {
+        return false;
+    }
+    if ( pos / 512 == _filePosition / 512 ) {
+        _filePosition = pos;
+        return true;
+    
+    } else if ( pos > _filePosition ) {
+
+        for (uint8_t i = 0; i < (pos / 512) - (_filePosition / 512); i++) {
+            word res = file.readBinary();
+            if (res <= 0 || res > 512) {
+                return false;
+            }
+            if (res < 512) {
+                if ( i > 0 && i < (pos / 512) - (_filePosition / 512) - 1 ) {
+                    _filePosition = ((i - 1) * 512) + i;
+                    break;
+                }
+                break;
+            }
+        }
+        _filePosition = pos;
+        return true;
+    } else {
+        char reopenFile[strlen(currentFile)];
+        strcpy(reopenFile, currentFile);
+
+        if (!fileOpen(reopenFile)) {
+            return false;
+        }
+        return fileSeek(pos);
+    }
+    return false;
+}
+
+uint32_t Utils::filePosition()
+{
+    return _filePosition;
+}
+
+uint32_t Utils::fileSize()
+{
+    return 0;
+}
+
+char Utils::fileRead()
+{
+    if (!hasFile()) {
+        return '\0';
+    }
+    char next = file.buffer[ _filePosition % 512 ];
+    fileSeek(_filePosition + 1);
+    return next;
+}
+
+uint8_t Utils::daysInMonth(uint8_t _month, uint16_t _year)
+{
+    // april, june, september, november
+    if ( _month == 4 || _month == 6 || _month == 9 || _month == 11 ) {
+        return 30;
+
+    // feburary
+    } else if (_month == 2) {
+
+        // leap year
+        if ( 
+            (_year % 4 == 0 && _year % 100 != 0) || (_year % 400 == 0)
+         ) {
+            return 29;
+        }
+
+        // normal year
+        return 28;
+
+    } 
+
+    // the rest
+    return 31;
 }

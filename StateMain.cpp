@@ -7,6 +7,9 @@ StateMain::~StateMain()
 
 void StateMain::enter()
 {
+    // reset touch state
+    utils->updateTouchState(-1, -1);
+
     // clear screen
     utils->tft->fillScreen(STATE_MAIN_BG_COLOR);
 
@@ -15,7 +18,7 @@ void StateMain::enter()
         utils->tft->width() - STATE_MAIN_LIST_W + 2,
         0,
         utils->tft->height(),
-        STATE_MAIN_TEXT_COLOR
+        DISPLAY_DATETIME_TEXT_COLOR
     );
 
     // reset vars
@@ -26,17 +29,9 @@ void StateMain::enter()
 
     // get number of photos on sd
     photoCount = 0;
-    if (SD.exists("photos")) {
-        File photoDir = SD.open("photos");
-        while(true) {
-            File photo = photoDir.openNextFile();
-            if (!photo) {
-                break;
-            }
-            photo.close();
-            photoCount++;
-        }
-        photoDir.close();
+    if (utils->fileOpen("photos.dat")) {
+        photoCount = (uint8_t) utils->fileRead();
+        utils->fileClose();
     }
 
     // build psuedo random photo sequence
@@ -52,7 +47,6 @@ void StateMain::enter()
                 }
             }
             if (!hasPhoto) {
-                Serial.println(photoSequence[i]);
                 break;
             }
         }
@@ -70,7 +64,7 @@ void StateMain::loop()
         sprintf(
             timeString,
             "%s%d:%s%d %s",
-            (hour() > 0 && hour() < 10 ) ? "0" : "",
+            ((hour() > 0 && hour() < 10) || (hour() > 12 && hour() < 22)) ? "0" : "",
             hour() == 0 ? 12 : (hour() > 12 ? hour() - 12 : hour()),
             (minute() < 10) ? "0" : "",
             minute(),
@@ -110,39 +104,29 @@ void StateMain::loop()
             DISPLAY_DATE_FONT_SIZE
         ); 
 
-        // load event data from sd card
-        if (!SD.exists("events.dat")) {
-            return;
-        }
-        File eventData = SD.open("events.dat");
-
-        // read first byte
-        int8_t byte = eventData.read();
-        if (byte == -1) {
+        // attempt to open event file
+        if (!utils->fileOpen("events.dat")) {
             return;
         }
 
         // get number of events
-        uint8_t eventCount = (uint8_t) byte;
+        uint8_t eventCount = (uint8_t) utils->fileRead();
         if (eventCount == 0) {
+            utils->fileClose();
             return;
         }
 
         // iterate dates
         uint8_t counter = 0;
-        eventData.seek((eventCount * EVENT_DATA_LENGTH) + 1);
+        utils->fileSeek((eventCount * EVENT_DATA_LENGTH) + 1);
         while(counter < STATE_MAIN_EVENT_COUNT) {
             
-            if (eventData.position() + EVENT_DATE_LENGTH > eventData.size()) {
-                break;
-            }
-
-            uint8_t id = (uint8_t) eventData.read();
-            uint8_t emonth = (uint8_t) eventData.read();
-            uint8_t eday = (uint8_t) eventData.read();
+            uint8_t id = (uint8_t) utils->fileRead();
+            uint8_t emonth = (uint8_t) utils->fileRead();
+            uint8_t eday = (uint8_t) utils->fileRead();
             uint8_t yearBytes[2];
-            yearBytes[0] = (uint8_t) eventData.read();
-            yearBytes[1] = (uint8_t) eventData.read();
+            yearBytes[0] = (uint8_t) utils->fileRead();
+            yearBytes[1] = (uint8_t) utils->fileRead();
             uint16_t eyear = 0;
             eyear = (eyear << 8) + yearBytes[1];
             eyear = (eyear << 8) + yearBytes[0];
@@ -163,51 +147,51 @@ void StateMain::loop()
 
             counter++;
 
-            uint16_t currentPos = eventData.position();
+            uint16_t currentPos = utils->filePosition();
 
-            eventData.seek(1);
+            utils->fileSeek(1);
             while(true) {
-                uint8_t _id = (uint8_t) eventData.read();
+                uint8_t _id = (uint8_t) utils->fileRead();
                 if (_id == id) {
 
                     // get event type and draw related icon
-                    uint8_t type = (uint8_t) eventData.read();
-                    switch (type)
-                    {
+                    uint8_t type = (uint8_t) utils->fileRead();
+
+                    uint8_t typeImage = ICON_EVENT;
+                    switch(type) {
                         case EVENT_TYPE_BDAY:
                         {
-                            utils->drawBitmap(
-                                "icons/bday.bmp",
-                                utils->tft->width() - STATE_MAIN_LIST_W + 2 + STATE_MAIN_EVENT_X,
-                                STATE_MAIN_EVENT_Y + ((((STATE_MAIN_EVENT_FONT_SIZE * FONT_SIZE_H) * 2) + STATE_MAIN_EVENT_PAD + STATE_MAIN_EVENT_LINE_PAD) * counter)
-                            );
+                            typeImage = ICON_BDAY;
                             break;
                         }
                         case EVENT_TYPE_ANIVERSARY:
                         {
-                            utils->drawBitmap(
-                                "icons/anni.bmp",
-                                utils->tft->width() - STATE_MAIN_LIST_W + 2 + STATE_MAIN_EVENT_X,
-                                STATE_MAIN_EVENT_Y + ((((STATE_MAIN_EVENT_FONT_SIZE * FONT_SIZE_H) * 2) + STATE_MAIN_EVENT_PAD + STATE_MAIN_EVENT_LINE_PAD) * counter)
-                            );
-                            break;
-                        }
-                        default:
-                        {
-                            utils->drawBitmap(
-                                "icons/default.bmp",
-                                utils->tft->width() - STATE_MAIN_LIST_W + 2 + STATE_MAIN_EVENT_X,
-                                STATE_MAIN_EVENT_Y + ((((STATE_MAIN_EVENT_FONT_SIZE * FONT_SIZE_H) * 2) + STATE_MAIN_EVENT_PAD + STATE_MAIN_EVENT_LINE_PAD) * counter)
-                            );                            
+                            typeImage = ICON_ANNIVERSARY;
                             break;
                         }
                     }
 
+                    // store current position so we can open icons
+                    uint16_t bitmapPosStash = utils->filePosition();
+
+                    // open icons and draw needed icon
+                    utils->fileOpen("icons.dat");
+                    utils->fileSeek(1);
+                    utils->drawImage(
+                        utils->tft->width() - STATE_MAIN_LIST_W + 2 + STATE_MAIN_EVENT_X,
+                        STATE_MAIN_EVENT_Y + ((((STATE_MAIN_EVENT_FONT_SIZE * FONT_SIZE_H) * 2) + STATE_MAIN_EVENT_PAD + STATE_MAIN_EVENT_LINE_PAD) * counter),
+                        typeImage
+                    );
+
+                    // open event file back up
+                    utils->fileOpen("events.dat");
+                    utils->fileSeek(bitmapPosStash);
+                    
                     // get title of event
                     uint8_t titleLen = EVENT_TITLE_LENGTH;
                     char title[EVENT_TITLE_LENGTH];
                     for (uint8_t i = 0; i < EVENT_TITLE_LENGTH; i++) {
-                        title[i] = eventData.read();
+                        title[i] = utils->fileRead();
                         if (title[i] == '\0' && titleLen >= EVENT_TITLE_LENGTH) {
                             titleLen = i + 1;
                         }
@@ -248,46 +232,45 @@ void StateMain::loop()
                     );                 
                     break;
                 }
-                eventData.seek( eventData.position() + EVENT_DATA_LENGTH - 1 );
+                utils->fileSeek( utils->filePosition() + EVENT_DATA_LENGTH - 1 );
             }
-            eventData.seek(currentPos);
+            utils->fileSeek(currentPos);
         }
-        eventData.close();
+        utils->fileClose();
     }
     
     // change photos
     if (photoCount > 0 && now() > lastPhotoChange + STATE_MAIN_PHOTO_CHANGE_INTERVAL) {
         lastPhotoChange = now();
-        
         currentPhotoIndex++;
+
         if (currentPhotoIndex >= photoCount) {
             currentPhotoIndex = 0;
         }
 
-        if (SD.exists("photos")) {
-            File photoDir = SD.open("photos");
-            for (uint8_t i = 0; i <= photoSequence[currentPhotoIndex]; i++) {
-                File photo = photoDir.openNextFile();
-                if (!photo) {
-                    break;
-                }
-                if (i == photoSequence[currentPhotoIndex]) {
-                    char photoFilename[32];
-                    sprintf(
-                        photoFilename,
-                        "photos/%s",
-                        photo.name()
-                    );
-                    utils->drawBitmap(
-                        photoFilename,
-                        0,
-                        0
-                    );
-                }
-                photo.close();
-            }
-            photoDir.close();
+        if (!utils->fileOpen("photos.dat")) {
+            return;
         }
+
+        // draw photo
+        utils->fileSeek(1);
+        utils->drawImage(0,0,photoSequence[currentPhotoIndex]);
+        utils->fileClose();
+
+    }
+
+    // photo pressed (goto options)
+    if (
+        utils->isTouched(
+            0,
+            0,
+            200,
+            240
+        )
+    ) {
+        State::changeState(
+            StateSetClock::ID
+        );        
     }
 
 }

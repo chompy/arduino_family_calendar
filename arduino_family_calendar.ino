@@ -154,14 +154,6 @@ void loop()
         utils.updateTouchState( -1, -1 );  
     }
 
-    //digitalWrite(13, HIGH);
-    // Recently Point was renamed TSPoint in the TouchScreen library
-    // If you are using an older version of the library, use the
-    // commented definition instead.
-    // Point p = ts.getPoint();
-    //TSPoint p = ts.getPoint();
-    //digitalWrite(13, LOW);
-
     // if sharing pins, you'll need to fix the directions of the touchscreen pins
     pinMode(XP, OUTPUT);
     pinMode(XM, OUTPUT);

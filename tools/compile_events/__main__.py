@@ -9,7 +9,7 @@ import dateutil.rrule
 # define constant vars
 EVENT_PATH = os.path.join( os.path.dirname(os.path.realpath(__file__)), "events" )
 TODAY = datetime.date.today()
-MAX_YEARS = 50
+MAX_YEARS = 150
 EVENT_TYPES = {
     "bday" : 1,
     "holiday" : 2,
@@ -26,6 +26,19 @@ if not os.path.exists(EVENT_PATH) or not os.path.isdir(EVENT_PATH):
 eventData = []
 dateList = []
 counter = 0
+
+# calculate easter
+def calc_easter(year):
+    "Returns Easter as a date object."
+    a = year % 19
+    b = year // 100
+    c = year % 100
+    d = (19 * a + b - b // 4 - ((b - (b + 8) // 25 + 1) // 3) + 15) % 30
+    e = (32 + 2 * (b % 4) + 2 * (c // 4) - d - (c % 4)) % 7
+    f = d + e - 7 * ((a + 11 * d + 22 * e) // 451) + 114
+    month = f // 31
+    day = f % 31 + 1    
+    return datetime.date(year, month, day)
 
 # iterate all event files
 for filename in os.listdir(EVENT_PATH):
@@ -47,10 +60,17 @@ for filename in os.listdir(EVENT_PATH):
         eventFile.getint("root", "day")
     )
 
-    # convert event type to an int
-    eventType = 0
-    if ( eventFile.get("root", "type") in EVENT_TYPES ):
-        eventType = EVENT_TYPES[ eventFile.get("root", "type") ]
+    # easter
+    isEaster = False
+    if eventFile.get("root", "type") == "holiday_easter":
+        eventType = 2
+        isEaster = True
+    
+    # convert event type to an int if not easter
+    else :
+        eventType = 0
+        if ( eventFile.get("root", "type") in EVENT_TYPES ):
+            eventType = EVENT_TYPES[ eventFile.get("root", "type") ]
 
     # build event data list
     eventData.append({
@@ -61,13 +81,17 @@ for filename in os.listdir(EVENT_PATH):
     })
 
     # generate date list
-    rrule = dateutil.rrule.rrulestr(eventFile.get("root", "rrule"), dtstart=eventDate)
-    for date in rrule:
-        if date.year < TODAY.year:
-            continue
-        elif date.year > TODAY.year + MAX_YEARS:
-            break
-        dateList.append([counter, date])
+    if not isEaster:
+        rrule = dateutil.rrule.rrulestr(eventFile.get("root", "rrule"), dtstart=eventDate)
+        for date in rrule:
+            if date.year < TODAY.year:
+                continue
+            elif date.year > TODAY.year + MAX_YEARS:
+                break
+            dateList.append([counter, date])
+    else:
+        for year in range(TODAY.year, TODAY.year + MAX_YEARS):
+            dateList.append([counter, calc_easter(year)])
 
     counter += 1
 

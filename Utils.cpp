@@ -123,17 +123,6 @@ void Utils::updateTouchState(int16_t x, int16_t y)
     hasTouch = true;
     touchX = (uint16_t) map(x, TS_MINX, TS_MAXX, tft->width(), 0);
     touchY = (uint16_t) map(y, TS_MINY, TS_MAXY, tft->height(), 0);
-
-    char test[12];
-    sprintf(
-        test,
-        "%s%dx%s%d ",
-        x < 10 ? "00" : (x < 100 ? "0" : ""),
-        x,
-        y < 10 ? "00" : (y < 100 ? "0" : ""),
-        y
-    );
-    Serial.println(test);
 }
 
 bool Utils::isTouched(uint16_t x, uint16_t y, uint16_t w, uint16_t h)

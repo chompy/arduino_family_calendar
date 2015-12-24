@@ -26,6 +26,7 @@ void StateMain::enter()
     lastDay = 99;
     lastPhotoChange = 0;
     currentPhotoIndex = 0;
+    setTimeHold = 0;
 
     // get number of photos on sd
     photoCount = 0;
@@ -232,9 +233,13 @@ void StateMain::loop()
                     );                 
                     break;
                 }
-                utils->fileSeek( utils->filePosition() + EVENT_DATA_LENGTH - 1 );
+                if (!utils->fileSeek( utils->filePosition() + EVENT_DATA_LENGTH - 1 )) {
+                    break;
+                }
             }
-            utils->fileSeek(currentPos);
+            if (!utils->fileSeek(currentPos)) {
+                break;
+            }
         }
         utils->fileClose();
     }
@@ -259,18 +264,28 @@ void StateMain::loop()
 
     }
 
-    // photo pressed (goto options)
+    // date/time area pressed (goto set clock)
     if (
         utils->isTouched(
+            utils->tft->width() - STATE_MAIN_LIST_W,
             0,
-            0,
-            200,
-            240
+            STATE_MAIN_LIST_W,
+            STATE_MAIN_DATE_Y + (FONT_SIZE_H * STATE_MAIN_DATE_FONT_SIZE)
         )
     ) {
-        State::changeState(
-            StateSetClock::ID
-        );        
+
+        if (setTimeHold == 0) {
+            setTimeHold = millis();
+        } else if (millis() > setTimeHold + STATE_MAIN_SET_TIME_HOLD) {
+            State::changeState(
+                StateSetClock::ID
+            );
+            setTimeHold = 0;
+        }
+    }
+
+    if (setTimeHold > 0 && millis() > setTimeHold + STATE_MAIN_SET_TIME_HOLD) {
+        setTimeHold = 0;
     }
 
 }

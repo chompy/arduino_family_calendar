@@ -37,6 +37,8 @@
 
 #define STATE_MAIN_PHOTO_CHANGE_INTERVAL 60
 
+#define STATE_MAIN_SET_TIME_HOLD 500
+
 class StateMain : public State
 {
 public:
@@ -63,6 +65,8 @@ private:
     time_t lastPhotoChange;
     uint8_t* photoSequence;
     uint8_t currentPhotoIndex;
+
+    uint32_t setTimeHold;
 
 };
 

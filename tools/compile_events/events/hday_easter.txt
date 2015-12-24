@@ -1,0 +1,6 @@
+title=Easter
+type=holiday_easter
+month=5
+day=1
+year=1970
+rrule=

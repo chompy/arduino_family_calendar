@@ -40,7 +40,7 @@ void Utils::drawString(uint16_t x, uint16_t y, char* string, uint16_t fg, uint16
 
 // draws given image number from image sequence data 
 // contained in currently opened file
-void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number)
+void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number, uint16_t _w = 0, uint16_t _h = 0)
 {
     if (!hasFile()) {
         return;
@@ -67,6 +67,14 @@ void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number)
 
         // next
         fileSeek(filePosition() + ((photoSize[0] * photoSize[1]) * 2));
+    }
+
+    // centering
+    if (_w > 0 && photoSize[0] < _w) {
+        _x = _x + (_w / 2) - (photoSize[0] / 2);
+    }
+    if (_h > 0 && photoSize[1] < _h) {
+        _y = _y + (_h / 2) - (photoSize[1] / 2);
     }
 
     // define image draw space

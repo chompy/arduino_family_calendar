@@ -13,7 +13,9 @@ void StateSplash::enter()
         utils->drawImage(
             0,
             0,
-            0
+            0,
+            320,
+            240
         );
         utils->fileClose();
     }

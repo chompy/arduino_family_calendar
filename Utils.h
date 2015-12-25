@@ -9,7 +9,7 @@
 
 // Version info
 #define VERSION1 1
-#define VERSION2 0
+#define VERSION2 1
 
 // Touch screen settings
 #define TS_MINX 200
@@ -64,7 +64,7 @@ public:
 
     // draw functions
     void drawString(uint16_t x, uint16_t y, char* string, uint16_t fg, uint16_t bg, uint8_t size);
-    void drawImage(uint16_t _x, uint16_t _y, uint8_t number);
+    void drawImage(uint16_t _x, uint16_t _y, uint8_t number, uint16_t _w, uint16_t _h);
 
     // touch
     void updateTouchState(int16_t x, int16_t y);

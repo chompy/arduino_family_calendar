@@ -181,7 +181,9 @@ void StateMain::loop()
                     utils->drawImage(
                         utils->tft->width() - STATE_MAIN_LIST_W + 2 + STATE_MAIN_EVENT_X,
                         STATE_MAIN_EVENT_Y + ((((STATE_MAIN_EVENT_FONT_SIZE * FONT_SIZE_H) * 2) + STATE_MAIN_EVENT_PAD + STATE_MAIN_EVENT_LINE_PAD) * counter),
-                        typeImage
+                        typeImage,
+                        16,
+                        16
                     );
 
                     // open event file back up
@@ -258,8 +260,9 @@ void StateMain::loop()
         }
 
         // draw photo
+        utils->tft->fillRect(0, 0, 200, 240, STATE_MAIN_BG_COLOR);
         utils->fileSeek(1);
-        utils->drawImage(0,0,photoSequence[currentPhotoIndex]);
+        utils->drawImage(0,0,photoSequence[currentPhotoIndex], 200, 240);
         utils->fileClose();
 
     }

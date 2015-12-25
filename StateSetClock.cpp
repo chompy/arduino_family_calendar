@@ -69,13 +69,17 @@ void StateSetClock::enter()
             utils->drawImage(
                 timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
                 STATE_SETCLOCK_TIME_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING - 1,
-                ICON_ARROW_UP
+                ICON_ARROW_UP,
+                16,
+                16
             );
             utils->fileSeek(1);
             utils->drawImage(
                 timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
                 STATE_SETCLOCK_DATE_Y - STATE_SETCLOCK_ARROW_H - STATE_SETCLOCK_ARROW_SPACING - 1,
-                ICON_ARROW_UP
+                ICON_ARROW_UP,
+                16,
+                16
             );
         }
 
@@ -85,13 +89,17 @@ void StateSetClock::enter()
             utils->drawImage(
                 timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
                 STATE_SETCLOCK_TIME_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING,
-                ICON_ARROW_DOWN
+                ICON_ARROW_DOWN,
+                16,
+                16
             );
             utils->fileSeek(1);
             utils->drawImage(
                 timePosX + (i * ((FONT_SIZE_W * STATE_SETCLOCK_FONT_SIZE) * 7)) + arrowCenter,
                 STATE_SETCLOCK_DATE_Y + ((FONT_SIZE_H - 1) * STATE_SETCLOCK_FONT_SIZE) + STATE_SETCLOCK_ARROW_SPACING,
-                ICON_ARROW_DOWN
+                ICON_ARROW_DOWN,
+                16,
+                16
             );           
         }
     }

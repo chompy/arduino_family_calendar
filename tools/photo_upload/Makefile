@@ -12,4 +12,4 @@ linux:
 win32:
 	mkdir -p $(TGT)/win32
 	cd src; make COMPILETO="win32"
-	$(CXX) $(LDFLAGS) $(TGT)/win32/*.o -o $(TGT)/win32/output.exe -lSDL2 -static-libgcc -static-libstdc++ -mconsole -mwindows -lmingw32 -lSDL2main -lSDL2_image
+	$(CXX) $(LDFLAGS) $(TGT)/win32/*.o -o $(TGT)/win32/output.exe -static-libgcc -static-libstdc++ -mconsole -mwindows -lmingw32 -lSDL2main -lSDL2 -lSDL2_image

@@ -19,9 +19,14 @@ struct PhotoData
 };
 std::vector<PhotoData> photos;
 
+int viewOffset = 0;
+
+SDL_Texture* loadingIcon = nullptr;
+
 int main(int argc, char **argv) {
 
-    SDL_SetMainReady();
+    SDL_Init(SDL_INIT_EVENTS);
+    SDL_Init(SDL_INIT_VIDEO);
 
     SDL_Window* window = SDL_CreateWindow(
         "FamCal Photo Tool",
@@ -37,6 +42,15 @@ int main(int argc, char **argv) {
         -1,
         SDL_RENDERER_ACCELERATED
     );
+
+    // load assets
+    SDL_Surface* loadingIconSurface = IMG_Load("assets/loading.png");
+    if (loadingIconSurface) {
+        loadingIcon = SDL_CreateTextureFromSurface(renderer, loadingIconSurface);
+        SDL_FreeSurface(loadingIconSurface);
+    }
+
+    SDL_SetMainReady();
 
     SDL_Event e;
     bool loop = true;
@@ -63,6 +77,23 @@ int main(int argc, char **argv) {
                 }
                 case SDL_DROPFILE:
                 {
+
+                    SDL_RenderSetClipRect(renderer, NULL);
+                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                    SDL_RenderClear(renderer);
+                    SDL_RenderFillRect(renderer, NULL);
+                    SDL_Rect loadingRect;
+                    SDL_QueryTexture(loadingIcon, NULL, NULL, &loadingRect.w, &loadingRect.h);
+                    loadingRect.x = (screenWidth / 2) - (loadingRect.w / 2);
+                    loadingRect.y = (screenHeight / 2) - (loadingRect.h / 2);
+                    SDL_RenderCopy(
+                        renderer,
+                        loadingIcon,
+                        NULL,
+                        &loadingRect
+                    );
+                    SDL_RenderPresent(renderer);
+
                     char* filename = e.drop.file;
                     SDL_Surface* photoSurface = IMG_Load(filename);
                     if (!photoSurface) {
@@ -114,6 +145,13 @@ int main(int argc, char **argv) {
                         photos.push_back(pd);
                     }
                     SDL_free(filename);
+                    viewOffset = 10000;
+
+                    break;
+                }
+                case SDL_MOUSEWHEEL:
+                {
+                    viewOffset += e.wheel.y * -15;
                     break;
                 }
             }
@@ -127,15 +165,37 @@ int main(int argc, char **argv) {
         SDL_RenderDrawLine(renderer, screenWidth - MENU_SIZE, MENU_SIZE, screenWidth - MENU_SIZE, screenHeight);
 
         int availableWidth = screenWidth - MENU_SIZE;
+        int availableHeight = screenHeight - MENU_SIZE;
         int imagesPerRow = availableWidth / (PHOTO_W + PHOTO_PAD);
-        for (uint i = 0; i < photos.size(); i++) {
+        int totalHeight = photos.size() > 0 ? (( (photos.size() - 1) / imagesPerRow) * (PHOTO_H + PHOTO_PAD)) + (PHOTO_H + PHOTO_PAD) : 0;
+
+        if (totalHeight < availableHeight) {
+            viewOffset = 0;
+        } else if (viewOffset > totalHeight - availableHeight + PHOTO_PAD) {
+            viewOffset = totalHeight - availableHeight + PHOTO_PAD;
+        } else if (viewOffset < 0) {
+            viewOffset = 0;
+        }
+
+        SDL_Rect renderClip;
+        renderClip.x = 0;
+        renderClip.y = MENU_SIZE + PHOTO_PAD;
+        renderClip.w = availableWidth;
+        renderClip.h = availableHeight;
+        SDL_RenderSetClipRect(renderer, &renderClip);
+
+        SDL_Rect photoRect;
+        photoRect.w = PHOTO_W;
+        photoRect.h = PHOTO_H;
+
+        for (unsigned int i = 0; i < photos.size(); i++) {
             if (!photos[i].texture) {
                 continue;
             }
             SDL_Rect dest;
             dest.x = PHOTO_PAD + ((i % imagesPerRow) * (PHOTO_W + PHOTO_PAD));
 
-            dest.y = MENU_SIZE + PHOTO_PAD + ((i / imagesPerRow) * (PHOTO_H + PHOTO_PAD));
+            dest.y = MENU_SIZE + PHOTO_PAD + ( ((i / imagesPerRow) * (PHOTO_H + PHOTO_PAD)) - viewOffset );
             dest.w = PHOTO_W;
             dest.h = PHOTO_H;
             SDL_RenderCopy(
@@ -144,6 +204,14 @@ int main(int argc, char **argv) {
                 NULL,
                 &dest
             );
+
+            photoRect.x = dest.x;
+            photoRect.y = dest.y;
+
+            SDL_RenderDrawRect(
+                renderer,
+                &photoRect
+            );
         }
         
         SDL_RenderPresent(renderer);
@@ -151,7 +219,7 @@ int main(int argc, char **argv) {
 
     }
 
-    for (uint i = 0; i < photos.size(); i++) {
+    for (unsigned int i = 0; i < photos.size(); i++) {
         SDL_DestroyTexture(photos[i].texture);
     }
     photos.clear();
@@ -159,4 +227,5 @@ int main(int argc, char **argv) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
+    return 1;
 }

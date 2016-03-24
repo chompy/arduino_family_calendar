@@ -2,12 +2,19 @@
 #include <SDL2/SDL_image.h>
 #include <iostream>
 #include <vector>
+#include "SerialClass.h"
 
 #define MENU_SIZE 32
 
 #define PHOTO_W 200
 #define PHOTO_H 240
 #define PHOTO_PAD 16
+
+#define SP_STATE_NONE 0
+#define SP_STATE_WAIT 1
+#define SP_STATE_PHOTO_COUNT 2
+#define SP_STATE_PHOTO_REQUEST 3
+#define SP_STATE_PHOTO_DOWNLOAD 4
 
 int screenWidth = 640;
 int screenHeight = 480;
@@ -21,14 +28,42 @@ std::vector<PhotoData> photos;
 
 int viewOffset = 0;
 
+int spState = 0;
+unsigned char devicePhotoCount = 0;
+unsigned char devicePhotoNum = 0;
+std::vector<char> photoData;
+
+SDL_Renderer* renderer = nullptr;
+SDL_Window* window = nullptr;
 SDL_Texture* loadingIcon = nullptr;
+
+void drawLoading()
+{
+    SDL_RenderSetClipRect(renderer, NULL);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    SDL_RenderFillRect(renderer, NULL);
+    SDL_Rect loadingRect;
+    SDL_QueryTexture(loadingIcon, NULL, NULL, &loadingRect.w, &loadingRect.h);
+    loadingRect.x = (screenWidth / 2) - (loadingRect.w / 2);
+    loadingRect.y = (screenHeight / 2) - (loadingRect.h / 2);
+    SDL_RenderCopy(
+        renderer,
+        loadingIcon,
+        NULL,
+        &loadingRect
+    );
+    SDL_RenderPresent(renderer);
+}
 
 int main(int argc, char **argv) {
 
     SDL_Init(SDL_INIT_EVENTS);
     SDL_Init(SDL_INIT_VIDEO);
 
-    SDL_Window* window = SDL_CreateWindow(
+    Serial* SP = new Serial("\\\\.\\COM7");
+
+    window = SDL_CreateWindow(
         "FamCal Photo Tool",
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
@@ -37,7 +72,7 @@ int main(int argc, char **argv) {
         SDL_WINDOW_SHOWN |
         SDL_WINDOW_RESIZABLE
     );
-    SDL_Renderer* renderer = SDL_CreateRenderer(
+    renderer = SDL_CreateRenderer(
         window,
         -1,
         SDL_RENDERER_ACCELERATED
@@ -51,6 +86,8 @@ int main(int argc, char **argv) {
     }
 
     SDL_SetMainReady();
+
+    drawLoading();
 
     SDL_Event e;
     bool loop = true;
@@ -78,21 +115,7 @@ int main(int argc, char **argv) {
                 case SDL_DROPFILE:
                 {
 
-                    SDL_RenderSetClipRect(renderer, NULL);
-                    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-                    SDL_RenderClear(renderer);
-                    SDL_RenderFillRect(renderer, NULL);
-                    SDL_Rect loadingRect;
-                    SDL_QueryTexture(loadingIcon, NULL, NULL, &loadingRect.w, &loadingRect.h);
-                    loadingRect.x = (screenWidth / 2) - (loadingRect.w / 2);
-                    loadingRect.y = (screenHeight / 2) - (loadingRect.h / 2);
-                    SDL_RenderCopy(
-                        renderer,
-                        loadingIcon,
-                        NULL,
-                        &loadingRect
-                    );
-                    SDL_RenderPresent(renderer);
+                    drawLoading();
 
                     char* filename = e.drop.file;
                     SDL_Surface* photoSurface = IMG_Load(filename);
@@ -157,6 +180,61 @@ int main(int argc, char **argv) {
             }
         }
 
+        if (!SP->IsConnected()) {
+            SDL_Delay(50);
+            continue;
+        }
+
+        switch (spState) {
+            case SP_STATE_NONE:
+            {
+                std::cout << "* Connected! Requesting photo count." << std::endl;
+                spState = SP_STATE_PHOTO_COUNT;
+                char state = SP_STATE_PHOTO_COUNT;
+                SP->WriteData(&state, 1);
+                break;
+            }
+            case SP_STATE_PHOTO_COUNT:
+            {
+                char buf[1];
+                int results = SP->ReadData(buf, 1);
+                if (results > 0) {
+                    devicePhotoCount = (unsigned char) buf[0];
+                    std::cout << "* Photo count is " << (int) devicePhotoCount << "." << std::endl;
+                    for (unsigned char i = 0; i < devicePhotoCount; i++) {
+                        PhotoData pd;
+                        pd.position = 0;
+                        pd.texture = nullptr;
+                        photos.push_back(pd);
+                    }
+                    spState = SP_STATE_PHOTO_DOWNLOAD;
+
+                    std::cout << "* Request photo #0." << std::endl;
+                    char photoRequest[2];
+                    photoRequest[0] = SP_STATE_PHOTO_REQUEST;
+                    photoRequest[1] = 0;
+                    SP->WriteData(photoRequest, 2);
+                    devicePhotoNum = 0;
+                    photoData.clear();
+                    std::cout << "TEST??" << std::endl;
+                    
+                }
+                break;
+            }
+            case SP_STATE_PHOTO_DOWNLOAD:
+            {
+                char buf[255];
+                int results = SP->ReadData(buf, 255);
+                if (results > 0) {
+                    std::cout << "GOT SOMETHING" << std::endl;
+                    unsigned short width, height;
+                    memcpy(&width, &buf[0], 2);
+                    memcpy(&height, &buf[2], 2);
+                    std::cout << "Recieving photo data #" << (int) devicePhotoNum << " ("  << width << "x" << height << "px)." << std::endl;
+                }
+            }
+        }
+
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
@@ -189,24 +267,16 @@ int main(int argc, char **argv) {
         photoRect.h = PHOTO_H;
 
         for (unsigned int i = 0; i < photos.size(); i++) {
-            if (!photos[i].texture) {
-                continue;
+            photoRect.x = PHOTO_PAD + ((i % imagesPerRow) * (PHOTO_W + PHOTO_PAD));
+            photoRect.y = MENU_SIZE + PHOTO_PAD + ( ((i / imagesPerRow) * (PHOTO_H + PHOTO_PAD)) - viewOffset );
+            if (photos[i].texture) {
+                SDL_RenderCopy(
+                    renderer,
+                    photos[i].texture,
+                    NULL,
+                    &photoRect
+                );
             }
-            SDL_Rect dest;
-            dest.x = PHOTO_PAD + ((i % imagesPerRow) * (PHOTO_W + PHOTO_PAD));
-
-            dest.y = MENU_SIZE + PHOTO_PAD + ( ((i / imagesPerRow) * (PHOTO_H + PHOTO_PAD)) - viewOffset );
-            dest.w = PHOTO_W;
-            dest.h = PHOTO_H;
-            SDL_RenderCopy(
-                renderer,
-                photos[i].texture,
-                NULL,
-                &dest
-            );
-
-            photoRect.x = dest.x;
-            photoRect.y = dest.y;
 
             SDL_RenderDrawRect(
                 renderer,

@@ -46,28 +46,8 @@ void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number, uint16_t _w = 0,
         return;
     }
 
-    uint32_t photoSize[2];
-
-    for (uint8_t i = 0; i <= number; i++) {
-
-        // get size of photo (4 bytes)
-        for (uint8_t j = 0; j < 2; j++) {
-            uint8_t bytes[2];
-            bytes[0] = fileRead();
-            bytes[1] = fileRead();
-            photoSize[j] = 0;
-            photoSize[j] = (photoSize[j] << 8) + bytes[1];
-            photoSize[j] = (photoSize[j] << 8) + bytes[0];
-        }
-
-        // is image to draw
-        if (i == number) {
-            break;
-        }
-
-        // next
-        fileSeek(filePosition() + ((photoSize[0] * photoSize[1]) * 2));
-    }
+    uint16_t photoSize[2];
+    imageSize(number, photoSize);
 
     // centering
     if (_w > 0 && photoSize[0] < _w) {
@@ -147,6 +127,38 @@ bool Utils::isTouched(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
         return true;
     }
     return false;
+}
+
+void Utils::imageSize(uint8_t number, uint16_t* size)
+{
+
+    size[0] = 0;
+    size[1] = 0;
+
+    if (!hasFile()) {
+        return;
+    }
+
+    for (uint8_t i = 0; i <= number; i++) {
+
+        // get size of photo (4 bytes)
+        for (uint8_t j = 0; j < 2; j++) {
+            uint8_t bytes[2];
+            bytes[0] = fileRead();
+            bytes[1] = fileRead();
+            size[j] = 0;
+            size[j] = (size[j] << 8) + bytes[1];
+            size[j] = (size[j] << 8) + bytes[0];
+        }
+
+        // is image to draw
+        if (i == number) {
+            break;
+        }
+
+        // next
+        fileSeek(filePosition() + ((size[0] * size[1]) * 2));
+    }
 }
 
 bool Utils::fileOpen(char* filename)

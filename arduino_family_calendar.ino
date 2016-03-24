@@ -10,6 +10,7 @@
 #include "StateSetClock.h"
 #include "StateError.h"
 #include "StateSplash.h"
+#include "StateUpload.h"
 
 // Touch Settings
 #define YP A2
@@ -90,7 +91,7 @@ void setup(void) {
 
     // goto state
     State::changeState(
-        StateSplash::ID
+        StateUpload::ID
     );
 
 }
@@ -139,6 +140,14 @@ void loop()
                     )
                 );
                 break;
+            }
+            case StateUpload::ID:
+            {
+                State::changeState(
+                    new StateUpload(
+                        &utils
+                    )
+                );
             }
         }        
     }

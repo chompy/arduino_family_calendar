@@ -46,14 +46,9 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 // Default time
 #define TIME_DEFAULT_HOUR 12
 #define TIME_DEFAULT_MINUTE 0
-#define TIME_DEFAULT_MONTH 12
-#define TIME_DEFAULT_DAY 25
-#define TIME_DEFAULT_YEAR 2015
-
-// Vars
-uint8_t photoCount = 0;
-time_t lastPhotoChange = 0;
-uint8_t currentPhoto = 0;
+#define TIME_DEFAULT_MONTH 3
+#define TIME_DEFAULT_DAY 27
+#define TIME_DEFAULT_YEAR 2016
 
 // Utility Class
 Utils utils(&tft);
@@ -62,7 +57,7 @@ Utils utils(&tft);
 void setup(void) {
 
     // init
-    Serial.begin(9600);
+    Serial.begin(57600);
     tft.reset();
     tft.begin(); 
     tft.fillScreen(BLACK);
@@ -89,10 +84,18 @@ void setup(void) {
         return;
     }
 
-    // goto state
-    State::changeState(
-        StateUpload::ID
-    );
+    // computer connection
+    if (Serial) {
+        State::changeState(
+            StateUpload::ID
+        );
+
+    // normal
+    } else {
+        State::changeState(
+            StateSplash::ID
+        );
+    }
 
 }
 

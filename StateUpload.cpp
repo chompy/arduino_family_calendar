@@ -9,15 +9,7 @@ void StateUpload::enter()
 {
     state = SP_STATE_WAIT;
     photoRequest = 0;
-    char uploadString[] = "WAITING FOR DATA";
-    utils->drawString(
-        (utils->tft->width() / 2) - (((FONT_SIZE_W * STATE_UPLOAD_TEXT_SIZE) * 16) / 2),
-        (utils->tft->height() / 2) - (((FONT_SIZE_H * STATE_UPLOAD_TEXT_SIZE)) / 2),
-        uploadString,
-        STATE_UPLOAD_TEXT_COLOR,
-        STATE_UPLOAD_BG_COLOR,
-        STATE_UPLOAD_TEXT_SIZE
-    );
+    displayWait();
 }
 
 void StateUpload::loop()
@@ -30,22 +22,16 @@ void StateUpload::loop()
             case SP_STATE_WAIT:
             {
                 switch (byte) {
-                    case SP_STATE_PHOTO_COUNT:
+                    case SP_STATE_PHOTO_SEND:
                     {
-                        uint8_t photoCount = 0;
-                        if (utils->fileOpen("photos.dat")) {
-                            photoCount = (uint8_t) utils->fileRead();
-                            utils->fileClose();
+                        if (!utils->fileOpen("photos.dat")) {
+                            break;
                         }
-                        Serial.write( photoCount );
-                        break;
-                    }
-                    case SP_STATE_PHOTO_REQUEST:
-                    {
 
-                        char uploadString[] = "SENDING PHOTO";
+                        utils->tft->fillScreen(0x0000);
+                        char uploadString[] = "SENDING PHOTOS TO PC";
                         utils->drawString(
-                            (utils->tft->width() / 2) - (((FONT_SIZE_W * STATE_UPLOAD_TEXT_SIZE) * 16) / 2),
+                            (utils->tft->width() / 2) - (((FONT_SIZE_W * STATE_UPLOAD_TEXT_SIZE) * strlen(uploadString)) / 2),
                             (utils->tft->height() / 2) - (((FONT_SIZE_H * STATE_UPLOAD_TEXT_SIZE)) / 2),
                             uploadString,
                             STATE_UPLOAD_TEXT_COLOR,
@@ -53,18 +39,14 @@ void StateUpload::loop()
                             STATE_UPLOAD_TEXT_SIZE
                         );
 
-                        while (Serial.available() < 1) {
-                            delay(100);
+                        uint32_t pos = 0;
+                        while(utils->fileSeek(pos)) {
+                            Serial.write( file.buffer, 512 );
+                            pos += 512;
                         }
-                        photoRequest = (uint8_t) Serial.read();
-
-                        utils->fileOpen("photos.dat");
-                        uint16_t photoSize[2];
-                        utils->imageSize(photoRequest, photoSize);
                         utils->fileClose();
-                        Serial.write(photoSize[0]);
-                        Serial.write(photoSize[1]);
 
+                        displayWait();
                         break;
                     }
                 }
@@ -78,4 +60,18 @@ void StateUpload::loop()
 void StateUpload::exit()
 {
 
+}
+
+void StateUpload::displayWait()
+{
+    utils->tft->fillScreen(0x0000);
+    char uploadString[] = "WAITING FOR PC";
+    utils->drawString(
+        (utils->tft->width() / 2) - (((FONT_SIZE_W * STATE_UPLOAD_TEXT_SIZE) * strlen(uploadString)) / 2),
+        (utils->tft->height() / 2) - (((FONT_SIZE_H * STATE_UPLOAD_TEXT_SIZE)) / 2),
+        uploadString,
+        STATE_UPLOAD_TEXT_COLOR,
+        STATE_UPLOAD_BG_COLOR,
+        STATE_UPLOAD_TEXT_SIZE
+    );
 }

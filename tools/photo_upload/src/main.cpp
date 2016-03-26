@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <vector>
 #include "SerialClass.h"
@@ -12,12 +13,11 @@
 
 #define SP_STATE_NONE 0
 #define SP_STATE_WAIT 1
-#define SP_STATE_PHOTO_COUNT 2
-#define SP_STATE_PHOTO_REQUEST 3
-#define SP_STATE_PHOTO_DOWNLOAD 4
+#define SP_STATE_PHOTO_SEND 2
+#define SP_STATE_PHOTO_RECV 3
 
-int screenWidth = 640;
-int screenHeight = 480;
+int screenWidth = (3 * (PHOTO_W + PHOTO_PAD)) + MENU_SIZE + (PHOTO_PAD;
+int screenHeight = (2 * (PHOTO_H + PHOTO_PAD)) + MENU_SIZE + (PHOTO_PAD * 2);
 
 struct PhotoData
 {
@@ -29,13 +29,17 @@ std::vector<PhotoData> photos;
 int viewOffset = 0;
 
 int spState = 0;
-unsigned char devicePhotoCount = 0;
-unsigned char devicePhotoNum = 0;
+unsigned char devicePhotoCount = 255;
+unsigned long devicePhotoPos = 0;
+unsigned int devicePhotoW = 0;
+unsigned int devicePhotoH = 0;
 std::vector<char> photoData;
 
 SDL_Renderer* renderer = nullptr;
 SDL_Window* window = nullptr;
 SDL_Texture* loadingIcon = nullptr;
+SDL_Texture* displayText = nullptr;
+int textW, textH;
 
 void drawLoading()
 {
@@ -61,8 +65,6 @@ int main(int argc, char **argv) {
     SDL_Init(SDL_INIT_EVENTS);
     SDL_Init(SDL_INIT_VIDEO);
 
-    Serial* SP = new Serial("\\\\.\\COM7");
-
     window = SDL_CreateWindow(
         "FamCal Photo Tool",
         SDL_WINDOWPOS_UNDEFINED,
@@ -78,19 +80,57 @@ int main(int argc, char **argv) {
         SDL_RENDERER_ACCELERATED
     );
 
-    // load assets
+    // "loading" image
     SDL_Surface* loadingIconSurface = IMG_Load("assets/loading.png");
     if (loadingIconSurface) {
         loadingIcon = SDL_CreateTextureFromSurface(renderer, loadingIconSurface);
         SDL_FreeSurface(loadingIconSurface);
     }
 
+    // main font
+    TTF_Init();
+    TTF_Font* font = TTF_OpenFont("assets/font.ttf", 16);
+
     SDL_SetMainReady();
 
     drawLoading();
 
-    SDL_Event e;
+    // connect to arduino
+    Serial* SP = nullptr;
+    Serial* trySerialPorts[8];
+    for (int i = 2; i < 10; i++) {
+        char comPort[16];
+        sprintf(comPort, "\\\\.\\COM%d", i);
+        trySerialPorts[i] = new Serial(comPort);
+    }
+    SDL_Delay(4000);
+    for (int i = 2; i < 10; i++) {
+        if (trySerialPorts[i]->IsConnected()) {
+            SP = trySerialPorts[i];
+            std::cout << "* Connected to device on COM" << i << "." << std::endl;
+            SDL_Delay(500);
+            break;
+        }
+    }
+    for (int i = 2; i < 10; i++) {
+        if (SP != trySerialPorts[i]) {
+            delete trySerialPorts[i];
+        }
+    }
+
     bool loop = true;
+
+    if (!SP) {
+        SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR,
+            "Error",
+            "Could not connect to FamCal device.",
+            window
+        );
+        loop = false;
+    }   
+
+    SDL_Event e;
     while(loop)
     {
         while( SDL_PollEvent(&e) ) {
@@ -114,6 +154,10 @@ int main(int argc, char **argv) {
                 }
                 case SDL_DROPFILE:
                 {
+
+                    if (spState != SP_STATE_WAIT && spState != SP_STATE_NONE) {
+                        break;
+                    }
 
                     drawLoading();
 
@@ -180,58 +224,96 @@ int main(int argc, char **argv) {
             }
         }
 
+        // lost connection
         if (!SP->IsConnected()) {
-            SDL_Delay(50);
-            continue;
+            SDL_ShowSimpleMessageBox(
+                SDL_MESSAGEBOX_ERROR,
+                "Error",
+                "Lost connection to FamCal device.",
+                window
+            );
+            loop = false;
         }
 
+        // serial transfer
         switch (spState) {
+
+            // at startup request photos
             case SP_STATE_NONE:
             {
-                std::cout << "* Connected! Requesting photo count." << std::endl;
-                spState = SP_STATE_PHOTO_COUNT;
-                char state = SP_STATE_PHOTO_COUNT;
+                std::cout << "* Connected! Requesting photos." << std::endl;
+                spState = SP_STATE_PHOTO_RECV;
+                char state = SP_STATE_PHOTO_SEND;
                 SP->WriteData(&state, 1);
                 break;
             }
-            case SP_STATE_PHOTO_COUNT:
+
+            // recieve photo data
+            case SP_STATE_PHOTO_RECV:
             {
-                char buf[1];
-                int results = SP->ReadData(buf, 1);
+                char buf[512];
+                int results = SP->ReadData(buf, 512);
                 if (results > 0) {
-                    devicePhotoCount = (unsigned char) buf[0];
-                    std::cout << "* Photo count is " << (int) devicePhotoCount << "." << std::endl;
-                    for (unsigned char i = 0; i < devicePhotoCount; i++) {
+                    if (photoData.size() == 0) {
+                        devicePhotoCount = buf[0];
+                        std::cout << "* Device photo count is " << (int) devicePhotoCount << "." << std::endl;
+                        devicePhotoPos = 1;
+                    }
+                    for (int i = 0; i < results; i++) {
+                        photoData.push_back(buf[i]);
+                    }
+
+                    if (devicePhotoW == 0 && devicePhotoH == 0 && photoData.size() - devicePhotoPos > 4) {
+                        memcpy( &devicePhotoW, &photoData[devicePhotoPos], 2);
+                        memcpy( &devicePhotoH, &photoData[devicePhotoPos + 2], 2);
+
+                        if (font) {
+                            char downloadText[64];
+                            sprintf(downloadText, "Downloading photo %d of %d.", (photos.size() + 1), (int) devicePhotoCount);
+                            SDL_Color color = {255, 255, 255};
+                            SDL_Surface* textSurface = TTF_RenderText_Solid(font, downloadText, color);
+                            if (textSurface) {
+                                textW = textSurface->w;
+                                textH = textSurface->h;                                
+                                displayText = SDL_CreateTextureFromSurface(
+                                    renderer,
+                                    textSurface
+                                );
+                                SDL_FreeSurface(textSurface);
+                            }
+                        }
+
+                    } else if (devicePhotoW > 0 && devicePhotoH > 0 && photoData.size() - devicePhotoPos > 4 + (( devicePhotoW * devicePhotoH ) * 2)) {
+                        std::cout << "* Got photo " << (photos.size() + 1) << " of " << (int) devicePhotoCount << " (" << devicePhotoW << "x" << devicePhotoH << ")." << std::endl;
                         PhotoData pd;
                         pd.position = 0;
-                        pd.texture = nullptr;
+                        SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(
+                            &photoData[devicePhotoPos + 4],
+                            devicePhotoW,
+                            devicePhotoH,
+                            16,
+                            devicePhotoW * 2,
+                            0xF800, 0x7E0, 0x1F, 0
+                        );
+                        pd.texture = SDL_CreateTextureFromSurface(
+                            renderer,
+                            surface
+                        );
+                        SDL_FreeSurface(surface);
                         photos.push_back(pd);
-                    }
-                    spState = SP_STATE_PHOTO_DOWNLOAD;
 
-                    std::cout << "* Request photo #0." << std::endl;
-                    char photoRequest[2];
-                    photoRequest[0] = SP_STATE_PHOTO_REQUEST;
-                    photoRequest[1] = 0;
-                    SP->WriteData(photoRequest, 2);
-                    devicePhotoNum = 0;
-                    photoData.clear();
-                    std::cout << "TEST??" << std::endl;
-                    
+                        devicePhotoPos += (4 + (( devicePhotoW * devicePhotoH ) * 2));
+                        devicePhotoW = 0;
+                        devicePhotoH = 0;
+                    }
                 }
+
+                if (photos.size() >= devicePhotoCount) {
+                    spState = SP_STATE_WAIT;
+                    break;
+                }
+
                 break;
-            }
-            case SP_STATE_PHOTO_DOWNLOAD:
-            {
-                char buf[255];
-                int results = SP->ReadData(buf, 255);
-                if (results > 0) {
-                    std::cout << "GOT SOMETHING" << std::endl;
-                    unsigned short width, height;
-                    memcpy(&width, &buf[0], 2);
-                    memcpy(&height, &buf[2], 2);
-                    std::cout << "Recieving photo data #" << (int) devicePhotoNum << " ("  << width << "x" << height << "px)." << std::endl;
-                }
             }
         }
 
@@ -284,6 +366,41 @@ int main(int argc, char **argv) {
             );
         }
         
+        // recieve/upload photo dialog
+        if (displayText && spState == SP_STATE_PHOTO_RECV) {
+
+            SDL_RenderSetClipRect(renderer, NULL);
+
+            SDL_Rect dest;
+            dest.w = textW + (MENU_SIZE * 2);
+            dest.h = textH + (MENU_SIZE * 2);
+            dest.x = (screenWidth / 2) - (dest.w / 2);
+            dest.y = (screenHeight / 2) - (dest.h / 2);
+
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderFillRect(
+                renderer,
+                &dest
+            );
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            SDL_RenderDrawRect(
+                renderer,
+                &dest
+            );
+            
+            dest.x = (screenWidth / 2) - (textW / 2);
+            dest.y = (screenHeight / 2) - (textH / 2);
+            dest.w = textW;
+            dest.h = textH;
+            SDL_RenderCopy(
+                renderer,
+                displayText,
+                NULL,
+                &dest
+            );
+
+        }
+
         SDL_RenderPresent(renderer);
         SDL_Delay(50);
 
@@ -294,8 +411,15 @@ int main(int argc, char **argv) {
     }
     photos.clear();
 
+    if (loadingIcon) {
+        SDL_DestroyTexture(loadingIcon);
+    }
+    if (displayText) {
+        SDL_DestroyTexture(displayText);
+    }
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    TTF_Quit();
     SDL_Quit();
     return 1;
 }

@@ -13,9 +13,8 @@
 
 #define SP_STATE_NONE 0
 #define SP_STATE_WAIT 1
-#define SP_STATE_PHOTO_COUNT 2
-#define SP_STATE_PHOTO_REQUEST 3
-#define SP_STATE_PHOTO_DOWNLOAD 4
+#define SP_STATE_PHOTO_SEND 2
+#define SP_STATE_PHOTO_RECV 3
 
 class StateUpload : public State
 {
@@ -34,6 +33,9 @@ public:
     void exit();
 
 private:
+
+    void displayWait();
+
     Utils* utils;
     uint8_t state;
     uint8_t photoRequest;

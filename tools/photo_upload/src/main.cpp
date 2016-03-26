@@ -5,7 +5,7 @@
 #include <vector>
 #include "SerialClass.h"
 
-#define MENU_SIZE 32
+#define MENU_SIZE 36
 
 #define PHOTO_W 200
 #define PHOTO_H 240
@@ -16,7 +16,7 @@
 #define SP_STATE_PHOTO_SEND 2
 #define SP_STATE_PHOTO_RECV 3
 
-int screenWidth = (3 * (PHOTO_W + PHOTO_PAD)) + MENU_SIZE + (PHOTO_PAD;
+int screenWidth = (3 * (PHOTO_W + PHOTO_PAD)) + MENU_SIZE + PHOTO_PAD;
 int screenHeight = (2 * (PHOTO_H + PHOTO_PAD)) + MENU_SIZE + (PHOTO_PAD * 2);
 
 struct PhotoData
@@ -38,6 +38,7 @@ std::vector<char> photoData;
 SDL_Renderer* renderer = nullptr;
 SDL_Window* window = nullptr;
 SDL_Texture* loadingIcon = nullptr;
+SDL_Texture* uploadButton = nullptr;
 SDL_Texture* displayText = nullptr;
 int textW, textH;
 
@@ -85,6 +86,13 @@ int main(int argc, char **argv) {
     if (loadingIconSurface) {
         loadingIcon = SDL_CreateTextureFromSurface(renderer, loadingIconSurface);
         SDL_FreeSurface(loadingIconSurface);
+    }
+
+    // "upload" button
+    SDL_Surface* uploadButtonSurface = IMG_Load("assets/btn_upload.png");
+    if (uploadButtonSurface) {
+        uploadButton = SDL_CreateTextureFromSurface(renderer, uploadButtonSurface);
+        SDL_FreeSurface(uploadButtonSurface);
     }
 
     // main font
@@ -251,6 +259,10 @@ int main(int argc, char **argv) {
             // recieve photo data
             case SP_STATE_PHOTO_RECV:
             {
+
+                // gray out buttons
+                SDL_SetTextureAlphaMod(uploadButton, 128);
+
                 char buf[512];
                 int results = SP->ReadData(buf, 512);
                 if (results > 0) {
@@ -310,6 +322,10 @@ int main(int argc, char **argv) {
 
                 if (photos.size() >= devicePhotoCount) {
                     spState = SP_STATE_WAIT;
+
+                    // enable buttons
+                    SDL_SetTextureAlphaMod(uploadButton, 255);
+
                     break;
                 }
 
@@ -323,6 +339,19 @@ int main(int argc, char **argv) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderDrawLine(renderer, 0, MENU_SIZE, screenWidth - MENU_SIZE, MENU_SIZE);
         SDL_RenderDrawLine(renderer, screenWidth - MENU_SIZE, MENU_SIZE, screenWidth - MENU_SIZE, screenHeight);
+
+        SDL_Rect buttonRect;
+        buttonRect.x = 8;
+        buttonRect.y = (MENU_SIZE / 2) - (14);
+        buttonRect.w = 128;
+        buttonRect.h = 28;
+
+        SDL_RenderCopy(
+            renderer,
+            uploadButton,
+            NULL,
+            &buttonRect
+        );
 
         int availableWidth = screenWidth - MENU_SIZE;
         int availableHeight = screenHeight - MENU_SIZE;

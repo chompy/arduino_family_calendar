@@ -2,6 +2,8 @@
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 #include <SPI.h>
 #include <tinyFAT.h>
+#include <mmc.h>
+
 #include <TouchScreen.h>
 #include "Utils.h"
 
@@ -53,6 +55,8 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 // Utility Class
 Utils utils(&tft);
 
+bool hasSerial = false;
+
 // init function
 void setup(void) {
 
@@ -84,24 +88,34 @@ void setup(void) {
         return;
     }
 
-    // computer connection
-    if (Serial) {
-        State::changeState(
-            StateUpload::ID
-        );
+    // experimentation!
+    /*file.create("test.dat");
+    file.openFile("test.dat");
+    uint32_t currSec=(file.BS.reservedSectors+(file.BS.fatCopies*file.BS.sectorsPerFAT)+((file.BS.rootDirectoryEntries*32)/512)+((file.currFile.currentCluster-2)*file.BS.sectorsPerCluster)+file.BS.hiddenSectors)+((file.currFile.fileSize/512) % file.BS.sectorsPerCluster);
+    file.buffer[0] = 79;
+    file.buffer[1] = 92;
+    file.buffer[2] = 5;
+    mmc::writeSector(file.buffer, currSec);
+    file.closeFile();*/
 
-    // normal
-    } else {
-        State::changeState(
-            StateSplash::ID
-        );
-    }
+
+    State::changeState(
+        StateSplash::ID
+    );
 
 }
 
 // main loop
 void loop()
 {
+
+    // switch to upload mode if serial data connection is received
+    if (!hasSerial && Serial.available() > 0) {
+        State::changeState(
+            StateUpload::ID
+        );
+        hasSerial = true;
+    }
 
     // new state
     if (State::hasNextState()) {

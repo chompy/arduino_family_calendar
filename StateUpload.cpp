@@ -49,6 +49,32 @@ void StateUpload::loop()
                         displayWait();
                         break;
                     }
+                    case SP_STATE_PHOTO_RECV:
+                    {
+
+                        utils->tft->fillScreen(0x0000);
+                        char uploadString[] = "RECEIVING PHOTOS FROM PC";
+
+                        char photoFilename[] = "photos.dat";
+                        utils->drawString(
+                            (utils->tft->width() / 2) - (((FONT_SIZE_W * STATE_UPLOAD_TEXT_SIZE) * strlen(uploadString)) / 2),
+                            (utils->tft->height() / 2) - (((FONT_SIZE_H * STATE_UPLOAD_TEXT_SIZE)) / 2),
+                            uploadString,
+                            STATE_UPLOAD_TEXT_COLOR,
+                            STATE_UPLOAD_BG_COLOR,
+                            STATE_UPLOAD_TEXT_SIZE
+                        );
+
+                        if (file.exists(photoFilename)) {
+                            file.delFile(photoFilename);
+                        }
+                        file.create(photoFilename);
+
+
+                        displayWait();
+                        break;
+
+                    }
                 }
 
             }

@@ -70,9 +70,6 @@ public:
     void updateTouchState(int16_t x, int16_t y);
     bool isTouched(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
 
-    // file sizes
-    void imageSize(uint8_t number, uint16_t* size);
-
     // file handling
     bool fileOpen(char* filename);
     void fileClose();

@@ -5,7 +5,7 @@
 #include "SPI.h"
 #include <Adafruit_TFTLCD.h>
 #include "TouchScreen.h"
-#include <tinyFAT.h>
+#include <Fat16.h>
 
 // Version info
 #define VERSION1 1
@@ -18,7 +18,7 @@
 #define TS_MAXY 940
 
 // Bitmap draw setting
-#define BUFFPIXEL 20
+#define BMP_BUFFER_SIZE 128
 
 // Font settings
 #define FONT_SIZE_W 6
@@ -58,8 +58,9 @@ class Utils
 public:
 
     Adafruit_TFTLCD* tft;
+    Fat16* file;
 
-    Utils(Adafruit_TFTLCD* _tft);
+    Utils(Adafruit_TFTLCD* _tft, Fat16* _file);
     ~Utils();
 
     // draw functions
@@ -83,6 +84,7 @@ public:
     uint8_t daysInMonth(uint8_t _month, uint16_t _year);
 
 private:
+
     bool hasTouch;
     uint16_t touchX;
     uint16_t touchY;
@@ -91,7 +93,6 @@ private:
     uint8_t lastMinute;
 
     char* currentFile;
-    uint32_t _filePosition;
 
 };
 

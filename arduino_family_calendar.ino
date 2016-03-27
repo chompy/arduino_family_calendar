@@ -1,8 +1,8 @@
 #include <Adafruit_GFX.h>    // Core graphics library
 #include <Adafruit_TFTLCD.h> // Hardware-specific library
 #include <SPI.h>
-#include <tinyFAT.h>
-#include <mmc.h>
+#include <Fat16.h>
+#include <Fat16util.h>
 
 #include <TouchScreen.h>
 #include "Utils.h"
@@ -52,8 +52,12 @@ Adafruit_TFTLCD tft(LCD_CS, LCD_CD, LCD_WR, LCD_RD, LCD_RESET);
 #define TIME_DEFAULT_DAY 27
 #define TIME_DEFAULT_YEAR 2016
 
+// sd card
+SdCard card;
+Fat16 file;
+
 // Utility Class
-Utils utils(&tft);
+Utils utils(&tft, &file);
 
 bool hasSerial = false;
 
@@ -78,26 +82,23 @@ void setup(void) {
     );
     randomSeed(now());
 
-    // boot sd
-    byte res = file.initFAT();
-    if (res != NO_ERROR) {
-        StateError::setMessage("SD Card failed, or not present");
+    // initialize the SD card
+    if (!card.init()) {
+        StateError::setMessage("SD Card failed, or not present (err 1)");
         State::changeState(
             StateError::ID
         );
-        return;
+        return;        
     }
-
-    // experimentation!
-    /*file.create("test.dat");
-    file.openFile("test.dat");
-    uint32_t currSec=(file.BS.reservedSectors+(file.BS.fatCopies*file.BS.sectorsPerFAT)+((file.BS.rootDirectoryEntries*32)/512)+((file.currFile.currentCluster-2)*file.BS.sectorsPerCluster)+file.BS.hiddenSectors)+((file.currFile.fileSize/512) % file.BS.sectorsPerCluster);
-    file.buffer[0] = 79;
-    file.buffer[1] = 92;
-    file.buffer[2] = 5;
-    mmc::writeSector(file.buffer, currSec);
-    file.closeFile();*/
-
+  
+    // initialize a FAT16 volume
+    if (!Fat16::init(&card)) {
+        StateError::setMessage("SD Card failed, or not present (err 2)");
+        State::changeState(
+            StateError::ID
+        );
+        return;    
+    }
 
     State::changeState(
         StateSplash::ID

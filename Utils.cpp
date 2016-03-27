@@ -1,8 +1,9 @@
 #include "Utils.h"
 
-Utils::Utils(Adafruit_TFTLCD* _tft)
+Utils::Utils(Adafruit_TFTLCD* _tft, Fat16* _file)
 {
     tft = _tft;
+    file = _file;
 
     hasTouch = false;
     touchX = 0;
@@ -12,7 +13,6 @@ Utils::Utils(Adafruit_TFTLCD* _tft)
     lastDay = 99;
 
     currentFile = nullptr;
-    _filePosition = 0;
 
 }
 
@@ -46,19 +46,14 @@ void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number, uint16_t _w = 0,
         return;
     }
 
-    uint32_t photoSize[2];
+    file->seekSet(1);
+
+    uint16_t photoSize[2];
 
     for (uint8_t i = 0; i <= number; i++) {
 
         // get size of photo (4 bytes)
-        for (uint8_t j = 0; j < 2; j++) {
-            uint8_t bytes[2];
-            bytes[0] = fileRead();
-            bytes[1] = fileRead();
-            photoSize[j] = 0;
-            photoSize[j] = (photoSize[j] << 8) + bytes[1];
-            photoSize[j] = (photoSize[j] << 8) + bytes[0];
-        }
+        file->read(&photoSize, 4);
 
         // is image to draw
         if (i == number) {
@@ -66,7 +61,7 @@ void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number, uint16_t _w = 0,
         }
 
         // next
-        fileSeek(filePosition() + ((photoSize[0] * photoSize[1]) * 2));
+        file->seekCur( (( (uint32_t) photoSize[0] * (uint32_t) photoSize[1]) * 2) );
     }
 
     // centering
@@ -85,40 +80,25 @@ void Utils::drawImage(uint16_t _x, uint16_t _y, uint8_t number, uint16_t _w = 0,
         _y + photoSize[1] - 1
     );
 
-    // iterate file, draw pixel dataj
-    uint32_t endPos = filePosition() + ((photoSize[0] * photoSize[1]) * 2);
+    // iterate file, draw pixel data
+    uint32_t endPos = filePosition() + (((uint32_t) photoSize[0] * (uint32_t) photoSize[1]) * 2);
     bool isFirst = true;
+
+    uint16_t buf[BMP_BUFFER_SIZE / 2];
+    int16_t amount = 0;
+
     while(filePosition() < endPos) {
-
-        uint16_t amount = 510;
-        if (512 - filePosition() % 512 < 510) {
-            amount = 512 - filePosition() % 512;
-
-            if (amount % 2 != 0) {
-                amount -= 1;
-                if (amount == 0) {
-                    uint8_t bytes[2];
-                    bytes[0] = fileRead();
-                    bytes[1] = fileRead();
-                    tft->pushColors(
-                        (uint16_t*) &bytes,
-                        1,
-                        false
-                    );
-                    continue;
-                }
-            }
+        amount = file->read(buf, BMP_BUFFER_SIZE);
+        if (amount <= 0) {
+            break;
         }
         tft->pushColors(
-            (uint16_t*) &file.buffer[ filePosition() % 512 ],
-            endPos - filePosition() < 510 ? (endPos - filePosition()) / 2 : amount / 2,
+            buf,
+            BMP_BUFFER_SIZE / 2,
             isFirst
         );
         isFirst = false;
-        fileSeek(filePosition() + amount);
     }
-
-
 
 }
 
@@ -154,17 +134,10 @@ bool Utils::fileOpen(char* filename)
     if (hasFile()) {
         fileClose();
     }
-    if (file.openFile(filename, FILEMODE_BINARY) == NO_ERROR) {
-        _filePosition = 0;
-        word res = file.readBinary();
-        if (res <= 0 || res > 512) {
-            file.closeFile();
-            return false;
-        }
-
+    if (file->open(filename, O_READ)) {
+        file->rewind();
         currentFile = new char[strlen(filename)];
         strcpy(currentFile, filename);
-
         return true;
     }
     return false;
@@ -177,16 +150,12 @@ void Utils::fileClose()
     }
     delete currentFile;
     currentFile = nullptr;
-    file.closeFile();
-    _filePosition = 0;
+    file->close();
 }
 
 bool Utils::hasFile()
 {
-    if (currentFile) {
-        return true;
-    }
-    return false;
+    return (bool) currentFile && file->isOpen();
 }
 
 bool Utils::fileSeek(uint32_t pos)
@@ -194,42 +163,12 @@ bool Utils::fileSeek(uint32_t pos)
     if (!hasFile()) {
         return false;
     }
-    if ( pos / 512 == _filePosition / 512 ) {
-        _filePosition = pos;
-        return true;
-    
-    } else if ( pos > _filePosition ) {
-
-        for (uint8_t i = 0; i < (pos / 512) - (_filePosition / 512); i++) {
-            word res = file.readBinary();
-            if (res <= 0 || res > 512) {
-                return false;
-            }
-            if (res < 512) {
-                if ( i > 0 && i < (pos / 512) - (_filePosition / 512) - 1 ) {
-                    _filePosition = ((i - 1) * 512) + i;
-                    break;
-                }
-                break;
-            }
-        }
-        _filePosition = pos;
-        return true;
-    } else {
-        char reopenFile[strlen(currentFile)];
-        strcpy(reopenFile, currentFile);
-
-        if (!fileOpen(reopenFile)) {
-            return false;
-        }
-        return fileSeek(pos);
-    }
-    return false;
+    return file->seekSet(pos);
 }
 
 uint32_t Utils::filePosition()
 {
-    return _filePosition;
+    return file->curPosition();
 }
 
 uint32_t Utils::fileSize()
@@ -242,9 +181,8 @@ char Utils::fileRead()
     if (!hasFile()) {
         return '\0';
     }
-    char next = file.buffer[ _filePosition % 512 ];
-    fileSeek(_filePosition + 1);
-    return next;
+    int16_t byte = file->read();
+    return byte > 0 ? (char) byte : '\0';
 }
 
 uint8_t Utils::daysInMonth(uint8_t _month, uint16_t _year)

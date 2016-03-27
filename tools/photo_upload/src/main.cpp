@@ -42,6 +42,9 @@ SDL_Texture* uploadButton = nullptr;
 SDL_Texture* displayText = nullptr;
 int textW, textH;
 
+SDL_Rect uploadButtonRect;
+
+
 void drawLoading()
 {
     SDL_RenderSetClipRect(renderer, NULL);
@@ -94,6 +97,10 @@ int main(int argc, char **argv) {
         uploadButton = SDL_CreateTextureFromSurface(renderer, uploadButtonSurface);
         SDL_FreeSurface(uploadButtonSurface);
     }
+    uploadButtonRect.x = 8;
+    uploadButtonRect.y = (MENU_SIZE / 2) - (14);
+    uploadButtonRect.w = 128;
+    uploadButtonRect.h = 28;
 
     // main font
     TTF_Init();
@@ -229,6 +236,18 @@ int main(int argc, char **argv) {
                     viewOffset += e.wheel.y * -15;
                     break;
                 }
+                case SDL_MOUSEBUTTONDOWN:
+                {
+                    SDL_Point mousePos;
+                    mousePos.x = e.button.x;
+                    mousePos.y = e.button.y;
+
+                    if (SDL_PointInRect(&mousePos, &uploadButtonRect)) {
+                        spState = SP_STATE_PHOTO_SEND;
+                    }
+
+                    break;
+                }
             }
         }
 
@@ -331,6 +350,62 @@ int main(int argc, char **argv) {
 
                 break;
             }
+
+            // send photo data
+            case SP_STATE_PHOTO_SEND:
+            {
+
+                drawLoading();
+
+                unsigned long fileSize = 1;
+                for (unsigned int i = 0; i < photos.size(); i++) {
+                    int w, h;
+                    SDL_QueryTexture(photos[i].texture, NULL, NULL, &w, &h);
+                    fileSize += 4 + ((w * h) * 2);
+                }
+
+                std::cout << "* Sending photos to device (" << fileSize << " bytes)." << std::endl;
+
+                char buf[64];
+                unsigned char bufPos = 0;
+                buf[0] = SP_STATE_PHOTO_RECV;
+                memcpy(&buf[1], &fileSize, 4);
+                SP->WriteData(buf, 5);
+                SDL_Delay(1000);
+
+
+                buf[0] = photos.size();
+                bufPos += 1;
+
+                char* pixels = nullptr;
+                int pitch = 0;
+                for (unsigned int i = 0; i < photos.size(); i++) {
+
+                    std::cout << "* Sending photo " << (i + 1) << " of " << photos.size() << "." << std::endl;
+
+                    int w, h;
+                    SDL_QueryTexture(photos[i].texture, NULL, NULL, &w, &h);
+                    SDL_LockTexture(photos[i].texture, NULL, reinterpret_cast<void **>(&pixels), &pitch);
+
+                    memcpy(&buf[bufPos], &w, 2);
+                    memcpy(&buf[bufPos + 2], &h, 2);
+                    bufPos += 4;
+
+                    long photoPos = 0;
+                    while(photoPos < (w * h) * 2) {
+                        memcpy(&buf[bufPos], &pixels[photoPos], 64 - bufPos);
+                        photoPos += 64 - bufPos;
+                        SP->WriteData(buf, 64);
+                        bufPos = 0;
+                    }
+
+                    SDL_UnlockTexture(photos[i].texture);
+                }
+
+                spState = SP_STATE_WAIT;
+
+                break;
+            }
         }
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -340,17 +415,11 @@ int main(int argc, char **argv) {
         SDL_RenderDrawLine(renderer, 0, MENU_SIZE, screenWidth - MENU_SIZE, MENU_SIZE);
         SDL_RenderDrawLine(renderer, screenWidth - MENU_SIZE, MENU_SIZE, screenWidth - MENU_SIZE, screenHeight);
 
-        SDL_Rect buttonRect;
-        buttonRect.x = 8;
-        buttonRect.y = (MENU_SIZE / 2) - (14);
-        buttonRect.w = 128;
-        buttonRect.h = 28;
-
         SDL_RenderCopy(
             renderer,
             uploadButton,
             NULL,
-            &buttonRect
+            &uploadButtonRect
         );
 
         int availableWidth = screenWidth - MENU_SIZE;

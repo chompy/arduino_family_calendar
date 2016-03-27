@@ -11,6 +11,8 @@
 #define STATE_UPLOAD_TEXT_COLOR 0xFFFF
 #define STATE_UPLOAD_TEXT_SIZE 2
 
+#define SEND_BUF_SIZE 128
+
 #define SP_STATE_NONE 0
 #define SP_STATE_WAIT 1
 #define SP_STATE_PHOTO_SEND 2
@@ -38,7 +40,7 @@ private:
 
     Utils* utils;
     uint8_t state;
-    uint8_t photoRequest;
+    uint32_t photoDownloadSize;
 };
 
 #endif

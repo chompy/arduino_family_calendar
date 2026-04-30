@@ -1,10 +1,10 @@
 Arduino Family Calendar
 -----------------------
-By Nathan Ogden
+**By Nathan Ogden**
 
 A family calendar Arduino project. Displays upcoming events in the family and pictures from a micro SD card. Used Arduino + TTF shield + 3D printed case and gave to family as gifts.
 
-I made this a long time ago, so I don't know much of how any of it is supposed to work anymore. This has been uploaded to Github to demostrate my skills in C++ and electronics.
+![Finished Product](assets/photo.webp)
 
 ## Usage
 
